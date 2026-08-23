@@ -15,10 +15,7 @@ class FlowLyApp extends StatelessWidget {
       theme: ThemeData(
         brightness: Brightness.light,
         scaffoldBackgroundColor: Colors.white,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.black,
-          brightness: Brightness.light,
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.black, brightness: Brightness.light),
       ),
       home: const MainScreen(),
     );
@@ -38,17 +35,19 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screens = [
+      HomeTab(onTrackTap: () => setState(() => _showPlayer = true)),
+      const EmptyTab(label: 'Search'),
+      const EmptyTab(label: 'Library'),
+      const EmptyTab(label: 'Profile'),
+    ];
+
     return Scaffold(
-      body: SafeArea(
-        child: IndexedStack(
-          index: _selectedIndex,
-          children: [
-            HomeTab(onTrackTap: () => setState(() => _showPlayer = true)),
-            const EmptyTab(label: 'Search'),
-            const EmptyTab(label: 'Library'),
-            const EmptyTab(label: 'Profile'),
-          ],
-        ),
+      body: Stack(
+        children: [
+          SafeArea(child: IndexedStack(index: _selectedIndex, children: screens)),
+          if (_showPlayer) const DraggableView(),
+        ],
       ),
       bottomNavigationBar: SafeArea(
         top: false,
@@ -68,22 +67,6 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ),
       ),
-      body: Stack(
-        children: [
-          SafeArea(
-            child: IndexedStack(
-              index: _selectedIndex,
-              children: [
-                HomeTab(onTrackTap: () => setState(() => _showPlayer = true)),
-                const EmptyTab(label: 'Search'),
-                const EmptyTab(label: 'Library'),
-                const EmptyTab(label: 'Profile'),
-              ],
-            ),
-          ),
-          if (_showPlayer) const DraggableView(),
-        ],
-      ),
     );
   }
 }
@@ -96,13 +79,11 @@ class _NavIcon extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: onTap,
-      icon: Icon(icon, size: selected ? 27 : 25, color: Colors.black),
-      splashRadius: 24,
-    );
-  }
+  Widget build(BuildContext context) => IconButton(
+        onPressed: onTap,
+        icon: Icon(icon, size: selected ? 27 : 25, color: Colors.black),
+        splashRadius: 24,
+      );
 }
 
 class HomeTab extends StatelessWidget {
@@ -111,18 +92,16 @@ class HomeTab extends StatelessWidget {
   final VoidCallback onTrackTap;
 
   @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
-      children: [
-        const Text('FlowLy', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.8, color: Colors.black)),
-        const SizedBox(height: 28),
-        const Text('Home', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.black)),
-        const SizedBox(height: 16),
-        TrackCard(onTap: onTrackTap),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => ListView(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
+        children: [
+          const Text('FlowLy', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.8, color: Colors.black)),
+          const SizedBox(height: 28),
+          const Text('Home', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.black)),
+          const SizedBox(height: 16),
+          TrackCard(onTap: onTrackTap),
+        ],
+      );
 }
 
 class TrackCard extends StatelessWidget {
@@ -131,37 +110,35 @@ class TrackCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: GestureDetector(
-        onTap: onTap,
-        child: SizedBox(
-          width: 120,
-          height: 120,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFFE7E7E7), Color(0xFFBEBEBE)],
+  Widget build(BuildContext context) => Align(
+        alignment: Alignment.centerLeft,
+        child: GestureDetector(
+          onTap: onTap,
+          child: SizedBox(
+            width: 120,
+            height: 120,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFE7E7E7), Color(0xFFBEBEBE)],
+                  ),
                 ),
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(12),
-                child: Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Text('Test Track', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black)),
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Align(
+                    alignment: Alignment.bottomLeft,
+                    child: Text('Test Track', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black)),
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
+      );
 }
 
 class EmptyTab extends StatelessWidget {
@@ -170,12 +147,10 @@ class EmptyTab extends StatelessWidget {
   final String label;
 
   @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
-      children: [
-        Text(label, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.8, color: Colors.black)),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => ListView(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
+        children: [
+          Text(label, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.8, color: Colors.black)),
+        ],
+      );
 }
