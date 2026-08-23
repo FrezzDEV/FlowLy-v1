@@ -2,9 +2,7 @@ import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 
-/// Port of FlowLy's draggable player surface.
-/// The original implementation lives in FrezzDEV/FlowLy at
-/// lib/utils/draggable_view.dart; this version is adapted for the v1 test UI.
+/// Responsive draggable player adapted from FrezzDEV/FlowLy.
 class DraggableView extends StatefulWidget {
   const DraggableView({super.key});
 
@@ -14,10 +12,10 @@ class DraggableView extends StatefulWidget {
 
 class DraggableViewState extends State<DraggableView>
     with SingleTickerProviderStateMixin {
-  static const double _miniHeight = 64;
-  static const double _miniMargin = 4;
-  static const double _miniRadius = 14;
-  static const double _navBarHeight = 64;
+  // Proportions of the available body height instead of fixed pixel heights.
+  static const double _miniFactor = 0.085;
+  static const double _expandedFactor = 1.0;
+  static const double _miniRadiusFactor = 0.022;
 
   late final AnimationController _progress;
 
@@ -52,10 +50,10 @@ class DraggableViewState extends State<DraggableView>
   }
 
   void _onDragUpdate(DragUpdateDetails details) {
-    final range = MediaQuery.sizeOf(context).height - _miniHeight;
-    if (range <= 0) return;
-    _progress.value = (_progress.value -
-            (details.primaryDelta ?? 0) / range)
+    final height = MediaQuery.sizeOf(context).height;
+    final travel = height * (_expandedFactor - _miniFactor);
+    if (travel <= 0) return;
+    _progress.value = (_progress.value - (details.primaryDelta ?? 0) / travel)
         .clamp(0.0, 1.0);
   }
 
@@ -64,7 +62,6 @@ class DraggableViewState extends State<DraggableView>
     final target = velocity.abs() > 600
         ? (velocity < 0 ? 1.0 : 0.0)
         : (_progress.value > 0.5 ? 1.0 : 0.0);
-
     if (target == 1) {
       await open();
     } else {
@@ -74,136 +71,117 @@ class DraggableViewState extends State<DraggableView>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _progress,
-      builder: (context, _) {
-        final size = MediaQuery.sizeOf(context);
-        final safeBottom = MediaQuery.paddingOf(context).bottom;
-        final t = _progress.value;
-        final artSize = lerpDouble(42, size.width * 0.56, t)!;
-        final artTop = lerpDouble(11, 92, t)!;
-        final artLeft = lerpDouble(10, (size.width - artSize) / 2, t)!;
-        final cardWidth = size.width - lerpDouble(_miniMargin * 2, 0, t)!;
-        final cardHeight = lerpDouble(_miniHeight, size.height, t)!;
-        final miniOpacity = 1 - _remap(t, 0, 0.3);
-        final expandedOpacity = _remap(t, 0.5, 1);
-        final bottomMargin =
-            lerpDouble(_navBarHeight + safeBottom + 3, 0, t)!;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final height = constraints.maxHeight;
+        final width = constraints.maxWidth;
 
-        return Align(
-          alignment: Alignment.bottomCenter,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onVerticalDragUpdate: _onDragUpdate,
-            onVerticalDragEnd: _onDragEnd,
-            child: Container(
-              width: cardWidth,
-              height: cardHeight,
-              margin: EdgeInsets.only(bottom: bottomMargin),
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: Color.lerp(
-                  const Color(0xFF191919),
-                  const Color(0xFF0B0B0B),
-                  t,
-                ),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(lerpDouble(_miniRadius, 0, t)!),
-                  topRight: Radius.circular(lerpDouble(_miniRadius, 0, t)!),
-                ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: artTop,
-                    left: artLeft,
-                    width: artSize,
-                    height: artSize,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: const _Artwork(showText: false),
+        return AnimatedBuilder(
+          animation: _progress,
+          builder: (context, _) {
+            final t = _progress.value;
+            final heightFactor = lerpDouble(_miniFactor, _expandedFactor, t)!;
+            final playerHeight = height * heightFactor;
+            final radius = width * _miniRadiusFactor * (1 - t);
+            final artSize = lerpDouble(width * 0.12, width * 0.56, t)!;
+            final artTop = lerpDouble(playerHeight * 0.18, height * 0.10, t)!;
+            final artLeft = lerpDouble(width * 0.025, (width - artSize) / 2, t)!;
+            final miniOpacity = 1 - _remap(t, 0, 0.32);
+            final expandedOpacity = _remap(t, 0.45, 1);
+
+            return Align(
+              alignment: Alignment.bottomCenter,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onVerticalDragUpdate: _onDragUpdate,
+                onVerticalDragEnd: _onDragEnd,
+                child: Container(
+                  width: width,
+                  height: playerHeight,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF111111),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(radius),
+                      topRight: Radius.circular(radius),
                     ),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x22000000),
+                        blurRadius: 18,
+                        offset: Offset(0, -4),
+                      ),
+                    ],
                   ),
-                  Positioned(
-                    left: 62,
-                    right: 142,
-                    top: 0,
-                    height: _miniHeight,
-                    child: Opacity(
-                      opacity: miniOpacity,
-                      child: IgnorePointer(
-                        ignoring: t > 0.3,
-                        child: GestureDetector(
-                          onTap: open,
-                          behavior: HitTestBehavior.opaque,
-                          child: const Align(
-                            alignment: Alignment.centerLeft,
-                            child: _TrackInfo(compact: true),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        top: artTop,
+                        left: artLeft,
+                        width: artSize,
+                        height: artSize,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(width * 0.024),
+                          child: const _Artwork(),
+                        ),
+                      ),
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          ignoring: t > 0.4,
+                          child: Opacity(
+                            opacity: miniOpacity,
+                            child: _MiniContent(
+                              onTap: open,
+                              width: width,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  Positioned(
-                    right: 90,
-                    top: 0,
-                    height: _miniHeight,
-                    child: Opacity(
-                      opacity: miniOpacity,
-                      child: const _ActionButton(icon: Icons.skip_previous_rounded),
-                    ),
-                  ),
-                  Positioned(
-                    right: 45,
-                    top: 0,
-                    height: _miniHeight,
-                    child: Opacity(
-                      opacity: miniOpacity,
-                      child: const _ActionButton(icon: Icons.play_arrow_rounded),
-                    ),
-                  ),
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    height: _miniHeight,
-                    child: Opacity(
-                      opacity: miniOpacity,
-                      child: const _ActionButton(icon: Icons.skip_next_rounded),
-                    ),
-                  ),
-                  Positioned(
-                    top: artTop + artSize + 42,
-                    left: 22,
-                    right: 22,
-                    child: IgnorePointer(
-                      ignoring: t < 0.5,
-                      child: Opacity(
-                        opacity: expandedOpacity,
-                        child: const _ExpandedPlayer(),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 34,
-                    right: 8,
-                    child: IgnorePointer(
-                      ignoring: t < 0.5,
-                      child: Opacity(
-                        opacity: expandedOpacity,
-                        child: GestureDetector(
-                          onTap: close,
-                          child: const _ActionButton(
-                            icon: Icons.keyboard_arrow_down_rounded,
-                            size: 48,
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          ignoring: t < 0.5,
+                          child: Opacity(
+                            opacity: expandedOpacity,
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(horizontal: width * 0.06),
+                              child: _ExpandedContent(
+                                top: artTop + artSize + height * 0.04,
+                                width: width,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                      Positioned(
+                        top: height * 0.025,
+                        left: 0,
+                        right: 0,
+                        child: IgnorePointer(
+                          ignoring: t < 0.5,
+                          child: Opacity(
+                            opacity: expandedOpacity,
+                            child: GestureDetector(
+                              onTap: close,
+                              child: Center(
+                                child: Container(
+                                  width: width * 0.11,
+                                  height: height * 0.006,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white38,
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -213,98 +191,153 @@ class DraggableViewState extends State<DraggableView>
       ((value - start) / (end - start)).clamp(0.0, 1.0).toDouble();
 }
 
-class _TrackInfo extends StatelessWidget {
-  const _TrackInfo({this.compact = false});
+class _MiniContent extends StatelessWidget {
+  const _MiniContent({required this.onTap, required this.width});
 
-  final bool compact;
+  final VoidCallback onTap;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Test Track', maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-        Text('FlowLy Artist', maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: Colors.white70, fontSize: 12)),
-      ],
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: width * 0.16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'Test Track',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'FlowLy Artist',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.keyboard_arrow_up_rounded, color: Colors.white, size: 24),
+          ],
+        ),
+      ),
     );
   }
 }
 
-class _ExpandedPlayer extends StatelessWidget {
-  const _ExpandedPlayer();
+class _ExpandedContent extends StatelessWidget {
+  const _ExpandedContent({required this.top, required this.width});
+
+  final double top;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Test Track', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 5),
-        const Text('FlowLy Artist', style: TextStyle(color: Colors.white70, fontSize: 15)),
-        const SizedBox(height: 48),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: Colors.white,
-            inactiveTrackColor: Colors.white24,
-            thumbColor: Colors.white,
-            overlayColor: Colors.transparent,
-            trackHeight: 4,
+    return Positioned(
+      top: top,
+      left: 0,
+      right: 0,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Align(
+            alignment: Alignment.center,
+            child: Text(
+              'Test Track',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: width * 0.06,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
-          child: const Slider(value: 0.28, onChanged: null),
-        ),
-        const Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _ActionButton(icon: Icons.skip_previous_rounded, size: 64),
-            _LargePlayButton(),
-            _ActionButton(icon: Icons.skip_next_rounded, size: 64),
-          ],
-        ),
-      ],
+          SizedBox(height: width * 0.015),
+          Align(
+            alignment: Alignment.center,
+            child: Text(
+              'FlowLy Artist',
+              style: TextStyle(color: Colors.white70, fontSize: width * 0.038),
+            ),
+          ),
+          SizedBox(height: width * 0.10),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: Colors.white,
+              inactiveTrackColor: Colors.white24,
+              thumbColor: Colors.white,
+              overlayColor: Colors.transparent,
+              trackHeight: width * 0.01,
+            ),
+            child: const Slider(value: 0.28, onChanged: null),
+          ),
+          SizedBox(height: width * 0.035),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _ActionButton(icon: Icons.skip_previous_rounded, sizeFactor: 0.16),
+              _LargePlayButton(),
+              _ActionButton(icon: Icons.skip_next_rounded, sizeFactor: 0.16),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _Artwork extends StatelessWidget {
-  const _Artwork({required this.showText});
-  final bool showText;
+  const _Artwork();
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFF292929),
-      alignment: Alignment.center,
-      child: const Icon(Icons.music_note_rounded, color: Colors.white70, size: 32),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+        color: const Color(0xFF292929),
+        alignment: Alignment.center,
+        child: const Icon(Icons.music_note_rounded, color: Colors.white70, size: 32),
+      );
 }
 
 class _ActionButton extends StatelessWidget {
-  const _ActionButton({required this.icon, this.size = 42});
+  const _ActionButton({required this.icon, required this.sizeFactor});
 
   final IconData icon;
-  final double size;
+  final double sizeFactor;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-        width: size,
-        height: size,
-        child: Center(child: Icon(icon, color: Colors.white, size: size * 0.56)),
-      );
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final size = width * sizeFactor;
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Center(
+        child: Icon(icon, color: Colors.white, size: size * 0.56),
+      ),
+    );
+  }
 }
 
 class _LargePlayButton extends StatelessWidget {
   const _LargePlayButton();
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: 82,
-        height: 82,
-        decoration: const BoxDecoration(color: Colors.white12, shape: BoxShape.circle),
-        alignment: Alignment.center,
-        child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 40),
-      );
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context).width * 0.20;
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(color: Colors.white12, shape: BoxShape.circle),
+      alignment: Alignment.center,
+      child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: size * 0.5),
+    );
+  }
 }
