@@ -3,6 +3,8 @@ name: Build and Release APK
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
 
@@ -30,6 +32,9 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Prepare Flutter Android project
+        run: flutter create --platforms=android --project-name flowly .
+
       - name: Flutter version
         run: flutter --version
 
@@ -46,7 +51,7 @@ jobs:
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             TAG="${GITHUB_REF_NAME}"
           else
-            TAG="v$(date -u +'%Y.%m.%d-%H%M')"
+            TAG="v0.1.${GITHUB_RUN_NUMBER}"
           fi
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
@@ -55,7 +60,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.release_tag.outputs.tag }}
         run: |
-          gh release create "$TAG" \
-            build/app/outputs/flutter-apk/app-release.apk \
-            --title "FlowLy $TAG" \
-            --generate-notes
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" \
+              build/app/outputs/flutter-apk/app-release.apk \
+              --clobber
+          else
+            gh release create "$TAG" \
+              build/app/outputs/flutter-apk/app-release.apk \
+              --title "FlowLy $TAG" \
+              --generate-notes
+          fi
