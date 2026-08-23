@@ -12,10 +12,9 @@ class DraggableView extends StatefulWidget {
 
 class DraggableViewState extends State<DraggableView>
     with SingleTickerProviderStateMixin {
-  // Proportions of the available body height instead of fixed pixel heights.
-  static const double _miniFactor = 0.085;
+  static const double _miniFactor = 0.075;
   static const double _expandedFactor = 1.0;
-  static const double _miniRadiusFactor = 0.022;
+  static const double _radiusFactor = 0.022;
 
   late final AnimationController _progress;
 
@@ -62,6 +61,7 @@ class DraggableViewState extends State<DraggableView>
     final target = velocity.abs() > 600
         ? (velocity < 0 ? 1.0 : 0.0)
         : (_progress.value > 0.5 ? 1.0 : 0.0);
+
     if (target == 1) {
       await open();
     } else {
@@ -73,19 +73,27 @@ class DraggableViewState extends State<DraggableView>
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final height = constraints.maxHeight;
+        final bodyHeight = constraints.maxHeight;
         final width = constraints.maxWidth;
 
         return AnimatedBuilder(
           animation: _progress,
           builder: (context, _) {
             final t = _progress.value;
-            final heightFactor = lerpDouble(_miniFactor, _expandedFactor, t)!;
-            final playerHeight = height * heightFactor;
-            final radius = width * _miniRadiusFactor * (1 - t);
+            final playerHeight = bodyHeight *
+                lerpDouble(_miniFactor, _expandedFactor, t)!;
+            final radius = width * _radiusFactor * (1 - t);
             final artSize = lerpDouble(width * 0.12, width * 0.56, t)!;
-            final artTop = lerpDouble(playerHeight * 0.18, height * 0.10, t)!;
-            final artLeft = lerpDouble(width * 0.025, (width - artSize) / 2, t)!;
+            final artTop = lerpDouble(
+              playerHeight * 0.16,
+              bodyHeight * 0.095,
+              t,
+            )!;
+            final artLeft = lerpDouble(
+              width * 0.025,
+              (width - artSize) / 2,
+              t,
+            )!;
             final miniOpacity = 1 - _remap(t, 0, 0.32);
             final expandedOpacity = _remap(t, 0.45, 1);
 
@@ -127,33 +135,31 @@ class DraggableViewState extends State<DraggableView>
                       ),
                       Positioned.fill(
                         child: IgnorePointer(
-                          ignoring: t > 0.4,
+                          ignoring: t > 0.35,
                           child: Opacity(
                             opacity: miniOpacity,
                             child: _MiniContent(
                               onTap: open,
                               width: width,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          ignoring: t < 0.5,
-                          child: Opacity(
-                            opacity: expandedOpacity,
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(horizontal: width * 0.06),
-                              child: _ExpandedContent(
-                                top: artTop + artSize + height * 0.04,
-                                width: width,
-                              ),
+                              artSize: lerpDouble(width * 0.12, width * 0.56, 0)! ,
                             ),
                           ),
                         ),
                       ),
                       Positioned(
-                        top: height * 0.025,
+                        top: artTop + artSize + bodyHeight * 0.035,
+                        left: width * 0.06,
+                        right: width * 0.06,
+                        child: IgnorePointer(
+                          ignoring: t < 0.5,
+                          child: Opacity(
+                            opacity: expandedOpacity,
+                            child: _ExpandedContent(width: width),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: bodyHeight * 0.025,
                         left: 0,
                         right: 0,
                         child: IgnorePointer(
@@ -165,7 +171,7 @@ class DraggableViewState extends State<DraggableView>
                               child: Center(
                                 child: Container(
                                   width: width * 0.11,
-                                  height: height * 0.006,
+                                  height: bodyHeight * 0.006,
                                   decoration: BoxDecoration(
                                     color: Colors.white38,
                                     borderRadius: BorderRadius.circular(999),
@@ -192,10 +198,11 @@ class DraggableViewState extends State<DraggableView>
 }
 
 class _MiniContent extends StatelessWidget {
-  const _MiniContent({required this.onTap, required this.width});
+  const _MiniContent({required this.onTap, required this.width, required this.artSize});
 
   final VoidCallback onTap;
   final double width;
+  final double artSize;
 
   @override
   Widget build(BuildContext context) {
@@ -203,7 +210,7 @@ class _MiniContent extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: width * 0.16),
+        padding: EdgeInsets.only(left: artSize + width * 0.05, right: width * 0.055),
         child: Row(
           children: [
             Expanded(
@@ -211,19 +218,11 @@ class _MiniContent extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
-                  Text(
-                    'Test Track',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
+                  Text('Test Track', maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
                   SizedBox(height: 2),
-                  Text(
-                    'FlowLy Artist',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
+                  Text('FlowLy Artist', maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Colors.white70, fontSize: 12)),
                 ],
               ),
             ),
@@ -236,61 +235,40 @@ class _MiniContent extends StatelessWidget {
 }
 
 class _ExpandedContent extends StatelessWidget {
-  const _ExpandedContent({required this.top, required this.width});
+  const _ExpandedContent({required this.width});
 
-  final double top;
   final double width;
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      top: top,
-      left: 0,
-      right: 0,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Align(
-            alignment: Alignment.center,
-            child: Text(
-              'Test Track',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: width * 0.06,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+    return Column(
+      children: [
+        Text('Test Track', textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white, fontSize: width * 0.06, fontWeight: FontWeight.w700)),
+        SizedBox(height: width * 0.015),
+        Text('FlowLy Artist', textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white70, fontSize: width * 0.038)),
+        SizedBox(height: width * 0.09),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: Colors.white,
+            inactiveTrackColor: Colors.white24,
+            thumbColor: Colors.white,
+            overlayColor: Colors.transparent,
+            trackHeight: width * 0.01,
           ),
-          SizedBox(height: width * 0.015),
-          Align(
-            alignment: Alignment.center,
-            child: Text(
-              'FlowLy Artist',
-              style: TextStyle(color: Colors.white70, fontSize: width * 0.038),
-            ),
-          ),
-          SizedBox(height: width * 0.10),
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: Colors.white,
-              inactiveTrackColor: Colors.white24,
-              thumbColor: Colors.white,
-              overlayColor: Colors.transparent,
-              trackHeight: width * 0.01,
-            ),
-            child: const Slider(value: 0.28, onChanged: null),
-          ),
-          SizedBox(height: width * 0.035),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _ActionButton(icon: Icons.skip_previous_rounded, sizeFactor: 0.16),
-              _LargePlayButton(),
-              _ActionButton(icon: Icons.skip_next_rounded, sizeFactor: 0.16),
-            ],
-          ),
-        ],
-      ),
+          child: const Slider(value: 0.28, onChanged: null),
+        ),
+        SizedBox(height: width * 0.035),
+        const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _ActionButton(icon: Icons.skip_previous_rounded, sizeFactor: 0.16),
+            _LargePlayButton(),
+            _ActionButton(icon: Icons.skip_next_rounded, sizeFactor: 0.16),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -316,13 +294,7 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final size = width * sizeFactor;
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Center(
-        child: Icon(icon, color: Colors.white, size: size * 0.56),
-      ),
-    );
+    return SizedBox(width: size, height: size, child: Center(child: Icon(icon, color: Colors.white, size: size * 0.56)));
   }
 }
 
