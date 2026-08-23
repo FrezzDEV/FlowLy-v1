@@ -11,9 +11,6 @@ environment:
 flutter:
   uses-material-design: true
 
-  assets:
-    - assets/
-
 dependencies:
   flutter:
     sdk: flutter
