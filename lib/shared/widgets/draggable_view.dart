@@ -30,6 +30,7 @@ class DraggableViewState extends State<DraggableView>
   late final AnimationController _progress;
   late final String _artworkUrl;
   Duration _position = const Duration(minutes: 1, seconds: 8);
+  bool _isPlaying = true;
 
   @override
   void initState() {
@@ -100,6 +101,18 @@ class DraggableViewState extends State<DraggableView>
         milliseconds: (_trackDuration.inMilliseconds * value).round(),
       );
     });
+  }
+
+  void _togglePlayPause() {
+    setState(() => _isPlaying = !_isPlaying);
+  }
+
+  void _previousTrack() {
+    setState(() => _position = Duration.zero);
+  }
+
+  void _nextTrack() {
+    setState(() => _position = _trackDuration);
   }
 
   String _format(Duration value) {
@@ -196,6 +209,10 @@ class DraggableViewState extends State<DraggableView>
                               opacity: miniOpacity,
                               child: _MiniContent(
                                 onTap: open,
+                                onPrevious: _previousTrack,
+                                onPlayPause: _togglePlayPause,
+                                onNext: _nextTrack,
+                                isPlaying: _isPlaying,
                                 width: width,
                                 artSize: width * 0.12,
                               ),
@@ -286,11 +303,19 @@ class _FallbackArtwork extends StatelessWidget {
 class _MiniContent extends StatelessWidget {
   const _MiniContent({
     required this.onTap,
+    required this.onPrevious,
+    required this.onPlayPause,
+    required this.onNext,
+    required this.isPlaying,
     required this.width,
     required this.artSize,
   });
 
   final VoidCallback onTap;
+  final VoidCallback onPrevious;
+  final VoidCallback onPlayPause;
+  final VoidCallback onNext;
+  final bool isPlaying;
   final double width;
   final double artSize;
 
@@ -302,7 +327,7 @@ class _MiniContent extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.only(
           left: artSize + width * 0.05,
-          right: width * 0.055,
+          right: width * 0.03,
         ),
         child: Row(
           children: [
@@ -331,12 +356,56 @@ class _MiniContent extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              Icons.keyboard_arrow_up_rounded,
-              color: Colors.white,
-              size: 24,
+            _MiniControlButton(
+              icon: Icons.skip_previous_rounded,
+              onPressed: onPrevious,
+              tooltip: 'Предыдущий трек',
+            ),
+            _MiniControlButton(
+              icon: isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+              onPressed: onPlayPause,
+              tooltip: isPlaying ? 'Пауза' : 'Воспроизвести',
+              emphasized: true,
+            ),
+            _MiniControlButton(
+              icon: Icons.skip_next_rounded,
+              onPressed: onNext,
+              tooltip: 'Следующий трек',
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniControlButton extends StatelessWidget {
+  const _MiniControlButton({
+    required this.icon,
+    required this.onPressed,
+    required this.tooltip,
+    this.emphasized = false,
+  });
+
+  final IconData icon;
+  final VoidCallback onPressed;
+  final String tooltip;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: emphasized ? 42 : 38,
+      height: 48,
+      child: IconButton(
+        onPressed: onPressed,
+        tooltip: tooltip,
+        padding: EdgeInsets.zero,
+        splashRadius: emphasized ? 22 : 20,
+        icon: Icon(
+          icon,
+          color: Colors.white,
+          size: emphasized ? 24 : 21,
         ),
       ),
     );
