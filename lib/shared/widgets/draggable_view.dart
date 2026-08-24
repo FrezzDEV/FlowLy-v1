@@ -162,7 +162,7 @@ class DraggableViewState extends State<DraggableView>
                               child: _MiniContent(
                                 onTap: open,
                                 width: width,
-                                artSize: lerpDouble(width * 0.12, width * 0.56, 0),
+                                artSize: width * 0.12,
                               ),
                             ),
                           ),
@@ -181,30 +181,6 @@ class DraggableViewState extends State<DraggableView>
                                 duration: _trackDuration,
                                 onSeek: _seek,
                                 format: _format,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: bodyHeight * 0.025,
-                          left: 0,
-                          right: 0,
-                          child: IgnorePointer(
-                            ignoring: t < 0.5,
-                            child: Opacity(
-                              opacity: expandedOpacity,
-                              child: GestureDetector(
-                                onTap: close,
-                                child: Center(
-                                  child: Container(
-                                    width: width * 0.11,
-                                    height: bodyHeight * 0.006,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white38,
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                  ),
-                                ),
                               ),
                             ),
                           ),
@@ -228,7 +204,11 @@ class DraggableViewState extends State<DraggableView>
 }
 
 class _MiniContent extends StatelessWidget {
-  const _MiniContent({required this.onTap, required this.width, required this.artSize});
+  const _MiniContent({
+    required this.onTap,
+    required this.width,
+    required this.artSize,
+  });
 
   final VoidCallback onTap;
   final double width;
@@ -342,11 +322,17 @@ class _ExpandedContent extends StatelessWidget {
             children: [
               Text(
                 format(position),
-                style: TextStyle(color: Colors.white60, fontSize: width * 0.032),
+                style: TextStyle(
+                  color: Colors.white60,
+                  fontSize: width * 0.032,
+                ),
               ),
               Text(
                 format(duration),
-                style: TextStyle(color: Colors.white60, fontSize: width * 0.032),
+                style: TextStyle(
+                  color: Colors.white60,
+                  fontSize: width * 0.032,
+                ),
               ),
             ],
           ),
@@ -355,9 +341,15 @@ class _ExpandedContent extends StatelessWidget {
         const Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _ActionButton(icon: Icons.skip_previous_rounded, sizeFactor: 0.16),
+            _ActionButton(
+              icon: Icons.skip_previous_rounded,
+              sizeFactor: 0.16,
+            ),
             _LargePlayButton(),
-            _ActionButton(icon: Icons.skip_next_rounded, sizeFactor: 0.16),
+            _ActionButton(
+              icon: Icons.skip_next_rounded,
+              sizeFactor: 0.16,
+            ),
           ],
         ),
       ],
@@ -394,7 +386,11 @@ class _ActionButton extends StatelessWidget {
       width: size,
       height: size,
       child: Center(
-        child: Icon(icon, color: Colors.white, size: size * 0.56),
+        child: Icon(
+          icon,
+          color: Colors.white,
+          size: size * 0.56,
+        ),
       ),
     );
   }
