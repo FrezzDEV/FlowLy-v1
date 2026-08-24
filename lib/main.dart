@@ -68,36 +68,49 @@ class _MainScreenState extends State<MainScreen> {
           ? null
           : SafeArea(
               top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: SizedBox(
-                  height: 64,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _NavIcon(
-                        icon: Icons.home_rounded,
-                        selected: _selectedIndex == 0,
-                        onTap: () => setState(() => _selectedIndex = 0),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final screenHeight = MediaQuery.sizeOf(context).height;
+                  final bottomInset = MediaQuery.paddingOf(context).bottom;
+                  final targetHeight = screenHeight * 0.075;
+                  final contentHeight =
+                      (targetHeight - bottomInset).clamp(0.0, targetHeight);
+
+                  return SizedBox(
+                    height: targetHeight,
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: SizedBox(
+                        height: contentHeight,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _NavIcon(
+                              icon: Icons.home_rounded,
+                              selected: _selectedIndex == 0,
+                              onTap: () => setState(() => _selectedIndex = 0),
+                            ),
+                            _NavIcon(
+                              icon: Icons.search_rounded,
+                              selected: _selectedIndex == 1,
+                              onTap: () => setState(() => _selectedIndex = 1),
+                            ),
+                            _NavIcon(
+                              icon: Icons.library_music_rounded,
+                              selected: _selectedIndex == 2,
+                              onTap: () => setState(() => _selectedIndex = 2),
+                            ),
+                            _NavIcon(
+                              icon: Icons.person_rounded,
+                              selected: _selectedIndex == 3,
+                              onTap: () => setState(() => _selectedIndex = 3),
+                            ),
+                          ],
+                        ),
                       ),
-                      _NavIcon(
-                        icon: Icons.search_rounded,
-                        selected: _selectedIndex == 1,
-                        onTap: () => setState(() => _selectedIndex = 1),
-                      ),
-                      _NavIcon(
-                        icon: Icons.library_music_rounded,
-                        selected: _selectedIndex == 2,
-                        onTap: () => setState(() => _selectedIndex = 2),
-                      ),
-                      _NavIcon(
-                        icon: Icons.person_rounded,
-                        selected: _selectedIndex == 3,
-                        onTap: () => setState(() => _selectedIndex = 3),
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
             ),
     );
