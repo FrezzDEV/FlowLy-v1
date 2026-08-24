@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 
 /// Responsive draggable player adapted from FrezzDEV/FlowLy.
@@ -26,6 +28,7 @@ class DraggableViewState extends State<DraggableView>
   static const Duration _trackDuration = Duration(minutes: 3, seconds: 42);
 
   late final AnimationController _progress;
+  late final String _artworkUrl;
   Duration _position = const Duration(minutes: 1, seconds: 8);
 
   @override
@@ -33,6 +36,8 @@ class DraggableViewState extends State<DraggableView>
     super.initState();
     _progress = AnimationController(vsync: this, value: 0)
       ..addListener(_notifyProgress);
+    final seed = DateTime.now().microsecondsSinceEpoch;
+    _artworkUrl = 'https://picsum.photos/seed/flowly-$seed/1000/1000';
     widget.onProgressChanged?.call(0);
   }
 
@@ -160,7 +165,16 @@ class DraggableViewState extends State<DraggableView>
                       ],
                     ),
                     child: Stack(
+                      fit: StackFit.expand,
                       children: [
+                        _BlurredArtworkBackground(
+                          imageUrl: _artworkUrl,
+                          blurSigma: lerpDouble(18, 34, t),
+                          opacity: lerpDouble(0.30, 0.62, t),
+                        ),
+                        Container(
+                          color: Colors.black.withOpacity(0.42),
+                        ),
                         Positioned(
                           top: artTop,
                           left: artLeft,
@@ -168,7 +182,11 @@ class DraggableViewState extends State<DraggableView>
                           height: artSize,
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(width * 0.024),
-                            child: const _Artwork(),
+                            child: Image.network(
+                              _artworkUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const _FallbackArtwork(),
+                            ),
                           ),
                         ),
                         Positioned.fill(
@@ -218,6 +236,51 @@ class DraggableViewState extends State<DraggableView>
 
   double _remap(double value, double start, double end) =>
       ((value - start) / (end - start)).clamp(0.0, 1.0).toDouble();
+}
+
+class _BlurredArtworkBackground extends StatelessWidget {
+  const _BlurredArtworkBackground({
+    required this.imageUrl,
+    required this.blurSigma,
+    required this.opacity,
+  });
+
+  final String imageUrl;
+  final double blurSigma;
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: opacity,
+      child: ImageFiltered(
+        imageFilter: ImageFilter.blur(
+          sigmaX: blurSigma,
+          sigmaY: blurSigma,
+        ),
+        child: Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const _FallbackArtwork(),
+        ),
+      ),
+    );
+  }
+}
+
+class _FallbackArtwork extends StatelessWidget {
+  const _FallbackArtwork();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        color: const Color(0xFF292929),
+        alignment: Alignment.center,
+        child: const Icon(
+          Icons.music_note_rounded,
+          color: Colors.white70,
+          size: 32,
+        ),
+      );
 }
 
 class _MiniContent extends StatelessWidget {
@@ -343,14 +406,14 @@ class _ExpandedContent extends StatelessWidget {
               Text(
                 format(position),
                 style: TextStyle(
-                  color: Colors.white60,
+                  color: Colors.white70,
                   fontSize: width * 0.032,
                 ),
               ),
               Text(
                 format(duration),
                 style: TextStyle(
-                  color: Colors.white60,
+                  color: Colors.white70,
                   fontSize: width * 0.032,
                 ),
               ),
@@ -375,21 +438,6 @@ class _ExpandedContent extends StatelessWidget {
       ],
     );
   }
-}
-
-class _Artwork extends StatelessWidget {
-  const _Artwork();
-
-  @override
-  Widget build(BuildContext context) => Container(
-        color: const Color(0xFF292929),
-        alignment: Alignment.center,
-        child: const Icon(
-          Icons.music_note_rounded,
-          color: Colors.white70,
-          size: 32,
-        ),
-      );
 }
 
 class _ActionButton extends StatelessWidget {
