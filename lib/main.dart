@@ -33,8 +33,6 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  // Intentionally compact: the Main bar should read as a small control strip,
-  // not as a second large panel.
   static const double _mainBarFactor = 0.06;
 
   int _selectedIndex = 0;
@@ -109,31 +107,15 @@ class _MainBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(color: Colors.white),
+    return const ColoredBox(
+      color: Colors.white,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _NavIcon(
-            icon: Icons.home_rounded,
-            selected: selectedIndex == 0,
-            onTap: () => onSelect(0),
-          ),
-          _NavIcon(
-            icon: Icons.search_rounded,
-            selected: selectedIndex == 1,
-            onTap: () => onSelect(1),
-          ),
-          _NavIcon(
-            icon: Icons.library_music_rounded,
-            selected: selectedIndex == 2,
-            onTap: () => onSelect(2),
-          ),
-          _NavIcon(
-            icon: Icons.person_rounded,
-            selected: selectedIndex == 3,
-            onTap: () => onSelect(3),
-          ),
+          _NavIcon(icon: Icons.home_rounded, index: 0),
+          _NavIcon(icon: Icons.search_rounded, index: 1),
+          _NavIcon(icon: Icons.library_music_rounded, index: 2),
+          _NavIcon(icon: Icons.person_rounded, index: 3),
         ],
       ),
     );
@@ -143,26 +125,27 @@ class _MainBar extends StatelessWidget {
 class _NavIcon extends StatelessWidget {
   const _NavIcon({
     required this.icon,
-    required this.selected,
-    required this.onTap,
+    required this.index,
   });
 
   final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
+  final int index;
 
   @override
   Widget build(BuildContext context) {
+    final mainState = context.findAncestorStateOfType<_MainScreenState>();
+    final selected = mainState?._selectedIndex == index;
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: onTap,
+      onTap: () => mainState?.setState(() => mainState._selectedIndex = index),
       child: SizedBox(
-        width: 48,
+        width: 44,
         height: double.infinity,
         child: Center(
           child: Icon(
             icon,
-            size: selected ? 25 : 23,
+            size: selected ? 24 : 22,
             color: Colors.black,
           ),
         ),
@@ -219,28 +202,44 @@ class TrackCard extends StatelessWidget {
             height: 120,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(20),
-              child: const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFFE7E7E7), Color(0xFFBEBEBE)],
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(
+                    'https://picsum.photos/seed/flowly-test-track/600/600',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => const ColoredBox(
+                      color: Color(0xFFD4D4D4),
+                    ),
                   ),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Align(
-                    alignment: Alignment.bottomLeft,
-                    child: Text(
-                      'Test Track',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black,
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Color(0x99000000),
+                        ],
                       ),
                     ),
                   ),
-                ),
+                  const Positioned(
+                    left: 12,
+                    right: 12,
+                    bottom: 12,
+                    child: Text(
+                      'Test Track',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
