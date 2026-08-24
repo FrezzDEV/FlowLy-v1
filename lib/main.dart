@@ -33,9 +33,13 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  // Intentionally compact: the Main bar should read as a small control strip,
+  // not as a second large panel.
+  static const double _mainBarFactor = 0.06;
+
   int _selectedIndex = 0;
   bool _showPlayer = false;
-  bool _playerExpanded = false;
+  double _playerProgress = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +50,9 @@ class _MainScreenState extends State<MainScreen> {
       const EmptyTab(label: 'Profile'),
     ];
 
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final mainBarHeight = screenHeight * _mainBarFactor;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -55,64 +62,80 @@ class _MainScreenState extends State<MainScreen> {
               children: screens,
             ),
           ),
+          IgnorePointer(
+            ignoring: _playerProgress > 0.65,
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Transform.translate(
+                offset: Offset(0, mainBarHeight * _playerProgress),
+                child: SizedBox(
+                  height: mainBarHeight,
+                  width: double.infinity,
+                  child: _MainBar(
+                    selectedIndex: _selectedIndex,
+                    onSelect: (index) => setState(() => _selectedIndex = index),
+                  ),
+                ),
+              ),
+            ),
+          ),
           if (_showPlayer)
             DraggableView(
+              mainBarHeight: mainBarHeight,
               onOpenStateChanged: (expanded) {
+                if (!expanded && mounted) {
+                  setState(() => _playerProgress = 0);
+                }
+              },
+              onProgressChanged: (progress) {
                 if (!mounted) return;
-                setState(() => _playerExpanded = expanded);
+                setState(() => _playerProgress = progress);
               },
             ),
         ],
       ),
-      bottomNavigationBar: _playerExpanded
-          ? null
-          : SafeArea(
-              top: false,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final screenHeight = MediaQuery.sizeOf(context).height;
-                  final bottomInset = MediaQuery.paddingOf(context).bottom;
-                  final targetHeight = screenHeight * 0.075;
-                  final contentHeight =
-                      (targetHeight - bottomInset).clamp(0.0, targetHeight);
+    );
+  }
+}
 
-                  return SizedBox(
-                    height: targetHeight,
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      child: SizedBox(
-                        height: contentHeight,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _NavIcon(
-                              icon: Icons.home_rounded,
-                              selected: _selectedIndex == 0,
-                              onTap: () => setState(() => _selectedIndex = 0),
-                            ),
-                            _NavIcon(
-                              icon: Icons.search_rounded,
-                              selected: _selectedIndex == 1,
-                              onTap: () => setState(() => _selectedIndex = 1),
-                            ),
-                            _NavIcon(
-                              icon: Icons.library_music_rounded,
-                              selected: _selectedIndex == 2,
-                              onTap: () => setState(() => _selectedIndex = 2),
-                            ),
-                            _NavIcon(
-                              icon: Icons.person_rounded,
-                              selected: _selectedIndex == 3,
-                              onTap: () => setState(() => _selectedIndex = 3),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
+class _MainBar extends StatelessWidget {
+  const _MainBar({
+    required this.selectedIndex,
+    required this.onSelect,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(color: Colors.white),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _NavIcon(
+            icon: Icons.home_rounded,
+            selected: selectedIndex == 0,
+            onTap: () => onSelect(0),
+          ),
+          _NavIcon(
+            icon: Icons.search_rounded,
+            selected: selectedIndex == 1,
+            onTap: () => onSelect(1),
+          ),
+          _NavIcon(
+            icon: Icons.library_music_rounded,
+            selected: selectedIndex == 2,
+            onTap: () => onSelect(2),
+          ),
+          _NavIcon(
+            icon: Icons.person_rounded,
+            selected: selectedIndex == 3,
+            onTap: () => onSelect(3),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -134,12 +157,12 @@ class _NavIcon extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: SizedBox(
-        width: 54,
-        height: 54,
+        width: 48,
+        height: double.infinity,
         child: Center(
           child: Icon(
             icon,
-            size: selected ? 27 : 25,
+            size: selected ? 25 : 23,
             color: Colors.black,
           ),
         ),
