@@ -2,9 +2,16 @@ import 'package:flutter/material.dart';
 
 /// Responsive draggable player adapted from FrezzDEV/FlowLy.
 class DraggableView extends StatefulWidget {
-  const DraggableView({super.key, this.onOpenStateChanged});
+  const DraggableView({
+    super.key,
+    this.onOpenStateChanged,
+    this.onProgressChanged,
+    required this.mainBarHeight,
+  });
 
   final ValueChanged<bool>? onOpenStateChanged;
+  final ValueChanged<double>? onProgressChanged;
+  final double mainBarHeight;
 
   @override
   State<DraggableView> createState() => DraggableViewState();
@@ -14,7 +21,7 @@ class DraggableViewState extends State<DraggableView>
     with SingleTickerProviderStateMixin {
   static const double _miniFactor = 0.075;
   static const double _expandedFactor = 1.0;
-  static const double _miniLiftFactor = 0.012;
+  static const double _miniLiftFactor = 0.008;
   static const double _radiusFactor = 0.022;
   static const Duration _trackDuration = Duration(minutes: 3, seconds: 42);
 
@@ -24,13 +31,20 @@ class DraggableViewState extends State<DraggableView>
   @override
   void initState() {
     super.initState();
-    _progress = AnimationController(vsync: this, value: 0);
+    _progress = AnimationController(vsync: this, value: 0)
+      ..addListener(_notifyProgress);
+    widget.onProgressChanged?.call(0);
   }
 
   @override
   void dispose() {
+    _progress.removeListener(_notifyProgress);
     _progress.dispose();
     super.dispose();
+  }
+
+  void _notifyProgress() {
+    widget.onProgressChanged?.call(_progress.value);
   }
 
   Future<void> open() async {
@@ -38,7 +52,7 @@ class DraggableViewState extends State<DraggableView>
     widget.onOpenStateChanged?.call(true);
     await _progress.animateTo(
       1,
-      duration: const Duration(milliseconds: 260),
+      duration: const Duration(milliseconds: 320),
       curve: Curves.easeOutCubic,
     );
   }
@@ -47,7 +61,7 @@ class DraggableViewState extends State<DraggableView>
     if (!mounted) return;
     await _progress.animateTo(
       0,
-      duration: const Duration(milliseconds: 260),
+      duration: const Duration(milliseconds: 320),
       curve: Curves.easeOutCubic,
     );
     widget.onOpenStateChanged?.call(false);
@@ -57,8 +71,9 @@ class DraggableViewState extends State<DraggableView>
     final height = MediaQuery.sizeOf(context).height;
     final travel = height * (_expandedFactor - _miniFactor);
     if (travel <= 0) return;
-    _progress.value = (_progress.value - (details.primaryDelta ?? 0) / travel)
-        .clamp(0.0, 1.0);
+    _progress.value =
+        (_progress.value - (details.primaryDelta ?? 0) / travel)
+            .clamp(0.0, 1.0);
   }
 
   Future<void> _onDragEnd(DragEndDetails details) async {
@@ -66,6 +81,7 @@ class DraggableViewState extends State<DraggableView>
     final target = velocity.abs() > 600
         ? (velocity < 0 ? 1.0 : 0.0)
         : (_progress.value > 0.5 ? 1.0 : 0.0);
+
     if (target == 1) {
       await open();
     } else {
@@ -100,6 +116,7 @@ class DraggableViewState extends State<DraggableView>
             final t = _progress.value;
             final playerHeight = bodyHeight *
                 lerpDouble(_miniFactor, _expandedFactor, t);
+            final bottomGap = widget.mainBarHeight * (1 - t);
             final miniLift = bodyHeight * _miniLiftFactor * (1 - t);
             final radius = width * _radiusFactor * (1 - t);
             final artSize = lerpDouble(width * 0.12, width * 0.56, t);
@@ -119,7 +136,7 @@ class DraggableViewState extends State<DraggableView>
             return Align(
               alignment: Alignment.bottomCenter,
               child: Transform.translate(
-                offset: Offset(0, -miniLift),
+                offset: Offset(0, -(bottomGap + miniLift)),
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onVerticalDragUpdate: _onDragUpdate,
@@ -299,7 +316,10 @@ class _ExpandedContent extends StatelessWidget {
         Text(
           'FlowLy Artist',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white70, fontSize: width * 0.038),
+          style: TextStyle(
+            color: Colors.white70,
+            fontSize: width * 0.038,
+          ),
         ),
         SizedBox(height: width * 0.09),
         SliderTheme(
