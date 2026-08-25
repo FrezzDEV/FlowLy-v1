@@ -7,9 +7,14 @@ import '../presentation/bloc/search_controller.dart';
 import '../presentation/widgets/search_result_tile.dart';
 
 class SearchPage extends StatefulWidget {
-  const SearchPage({super.key, required this.searchRepository});
+  const SearchPage({
+    super.key,
+    required this.searchRepository,
+    required this.onPlayerRequested,
+  });
 
   final SearchRepository searchRepository;
+  final VoidCallback onPlayerRequested;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -75,6 +80,7 @@ class _SearchPageState extends State<SearchPage> {
         _recentSearches.insert(0, query);
         if (_recentSearches.length > 6) _recentSearches.removeLast();
       }
+      widget.onPlayerRequested();
     } catch (_) {
       if (mounted) {
         setState(() => _playingVideoId = null);
