@@ -1,4 +1,4 @@
-import 'dart:convert';
+import 'dart:async';
 
 import 'package:http/http.dart' as http;
 
@@ -14,20 +14,32 @@ class MusicApi {
   final String baseUrl;
 
   Future<List<FlowLyTrack>> search(String query) async {
-    final response = await _client.get(
-      Uri.parse('$baseUrl/search').replace(
-        queryParameters: {'q': query},
-      ),
-    );
+    try {
+      final response = await _client
+          .get(
+            Uri.parse('$baseUrl/search').replace(
+              queryParameters: {'q': query},
+            ),
+          )
+          .timeout(const Duration(seconds: 12));
 
-    if (response.statusCode != 200) {
-      throw MusicApiException('Search failed: ${response.statusCode}');
+      if (response.statusCode != 200) {
+        throw MusicApiException('Search failed: ${response.statusCode}');
+      }
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return (body['results'] as List<dynamic>? ?? const [])
+          .map((item) => FlowLyTrack.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } on TimeoutException {
+      throw const MusicApiException(
+        'FlowLy API не ответил вовремя. Проверьте, что backend запущен.',
+      );
+    } on http.ClientException {
+      throw const MusicApiException(
+        'Не удалось подключиться к FlowLy API. Проверьте Android INTERNET permission и адрес API.',
+      );
     }
-
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return (body['results'] as List<dynamic>? ?? const [])
-        .map((item) => FlowLyTrack.fromJson(item as Map<String, dynamic>))
-        .toList();
   }
 
   String streamUrl(String videoId) => '$baseUrl/stream/$videoId';
