@@ -51,7 +51,7 @@ class _PlayerHostState extends State<PlayerHost>
     _progress = AnimationController(vsync: this, value: 0)
       ..addListener(_notifyProgress);
 
-    _playbackSubscription = _audioHandler.playbackStateStream.listen((state) {
+    _playbackSubscription = _audioHandler.playbackState.listen((state) {
       if (!mounted) return;
       setState(() {
         _isPlaying = state.playing;
@@ -115,13 +115,14 @@ class _PlayerHostState extends State<PlayerHost>
     target == 1 ? await open() : await close();
   }
 
-  void _seek(double value) => _audioHandler.seek(Duration(
-        milliseconds: (_trackDuration.inMilliseconds * value).round(),
-      ));
+  void _seek(double value) => _audioHandler.seek(
+        Duration(
+          milliseconds: (_trackDuration.inMilliseconds * value).round(),
+        ),
+      );
 
-  void _togglePlayPause() => _isPlaying
-      ? _audioHandler.pause()
-      : _audioHandler.play();
+  void _togglePlayPause() =>
+      _isPlaying ? _audioHandler.pause() : _audioHandler.play();
 
   void _toggleLike() => setState(() => _isLiked = !_isLiked);
 
