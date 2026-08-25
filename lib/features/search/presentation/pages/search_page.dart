@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models/track_model.dart';
 import '../../../player/infrastructure/audio_player_service.dart';
-import '../domain/search_repository.dart';
-import '../presentation/bloc/search_controller.dart';
-import '../presentation/widgets/search_result_tile.dart';
+import '../../domain/search_repository.dart';
+import '../bloc/search_controller.dart';
+import '../widgets/search_result_tile.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({
