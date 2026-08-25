@@ -92,7 +92,10 @@ class _MainScreenState extends State<MainScreen> {
               index: _selectedIndex,
               children: [
                 HomeTab(onTrackTap: _openFeaturedTrack, loading: _loadingTrack),
-                SearchPage(searchRepository: searchRepository),
+                SearchPage(
+                  searchRepository: searchRepository,
+                  onPlayerRequested: () => setState(() => _showPlayer = true),
+                ),
                 const EmptyTab(label: 'Library'),
                 const EmptyTab(label: 'Profile'),
               ],
