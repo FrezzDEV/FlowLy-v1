@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../data/models/track_model.dart';
 import '../../player/infrastructure/audio_player_service.dart';
-import '../data/search_repository_impl.dart';
 import '../domain/search_repository.dart';
 import '../presentation/bloc/search_controller.dart';
 import '../presentation/widgets/search_result_tile.dart';
@@ -60,11 +59,7 @@ class _SearchPageState extends State<SearchPage> {
     try {
       final audio = AudioServiceManager.instance.handler as AudioPlayerService;
       await audio.loadTrack(
-        streamUrl: widget.searchRepository is SearchRepositoryImpl
-            ? (widget.searchRepository as SearchRepositoryImpl)
-                .musicRepository
-                .streamUrl(track.videoId)
-            : '',
+        streamUrl: widget.searchRepository.streamUrl(track.videoId),
         title: track.title,
         artist: track.artist,
         artworkUrl: track.thumbnail,
@@ -100,7 +95,11 @@ class _SearchPageState extends State<SearchPage> {
       children: [
         const Text(
           'Search',
-          style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.8),
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.8,
+          ),
         ),
         const SizedBox(height: 18),
         TextField(
@@ -117,7 +116,6 @@ class _SearchPageState extends State<SearchPage> {
                       _textController.clear();
                       _controller.queryChanged('');
                       _focusNode.requestFocus();
-                      setState(() {});
                     },
                     icon: const Icon(Icons.close_rounded),
                   )
