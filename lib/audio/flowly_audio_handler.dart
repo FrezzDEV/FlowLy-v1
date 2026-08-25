@@ -8,25 +8,33 @@ class FlowLyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
 
   final AudioPlayer _player = AudioPlayer();
 
-  static const String demoUrl =
-      'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
-
-  Future<void> loadDemoTrack() async {
-    const item = MediaItem(
-      id: demoUrl,
+  Future<void> loadTrack({
+    required String streamUrl,
+    required String title,
+    required String artist,
+    String? artworkUrl,
+    Duration? duration,
+    bool autoplay = false,
+  }) async {
+    final item = MediaItem(
+      id: streamUrl,
       album: 'FlowLy',
-      title: 'Test Track',
-      artist: 'FlowLy Artist',
-      duration: Duration(minutes: 3, seconds: 42),
+      title: title,
+      artist: artist,
+      artUri: artworkUrl == null ? null : Uri.tryParse(artworkUrl),
+      duration: duration,
     );
 
     mediaItem.add(item);
     await _player.setAudioSource(
-      AudioSource.uri(Uri.parse(demoUrl), tag: item),
-      initialPosition: const Duration(minutes: 1, seconds: 8),
+      AudioSource.uri(Uri.parse(streamUrl), tag: item),
     );
-    await _player.pause();
-    _broadcastState(_player.playbackEvent);
+
+    if (autoplay) {
+      await _player.play();
+    } else {
+      await _player.pause();
+    }
   }
 
   @override
@@ -122,7 +130,5 @@ class FlowLyAudioService {
         preloadArtwork: true,
       ),
     );
-
-    await (_handler! as FlowLyAudioHandler).loadDemoTrack();
   }
 }
