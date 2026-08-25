@@ -4,7 +4,7 @@ import '../../../../data/models/track_model.dart';
 import '../../../player/infrastructure/audio_player_service.dart';
 import '../../domain/search_repository.dart';
 import '../bloc/search_controller.dart';
-import '../data/recent_search_store.dart';
+import '../../data/recent_search_store.dart';
 import '../widgets/search_result_tile.dart';
 
 class SearchPage extends StatefulWidget {
