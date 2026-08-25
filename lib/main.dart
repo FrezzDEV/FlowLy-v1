@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 
+import 'audio/flowly_audio_handler.dart';
 import 'shared/widgets/draggable_view.dart';
 
-void main() => runApp(const FlowLyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await FlowLyAudioService.instance.initialize();
+  runApp(const FlowLyApp());
+}
 
 class FlowLyApp extends StatelessWidget {
   const FlowLyApp({super.key});
