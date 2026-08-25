@@ -9,4 +9,7 @@ final class SearchRepositoryImpl implements SearchRepository {
 
   @override
   Future<List<FlowLyTrack>> search(String query) => musicRepository.search(query);
+
+  @override
+  String streamUrl(String videoId) => musicRepository.streamUrl(videoId);
 }
