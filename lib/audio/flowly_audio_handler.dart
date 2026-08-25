@@ -1,20 +1,9 @@
-import 'dart:async';
-
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
 
 class FlowLyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   FlowLyAudioHandler() {
     _player.playbackEventStream.listen(_broadcastState);
-    _player.positionStream.listen((position) {
-      final item = mediaItem.valueOrNull;
-      if (item != null) {
-        mediaItem.add(item.copyWith(duration: _player.duration, extras: {
-          ...?item.extras,
-          'position': position.inMilliseconds,
-        }));
-      }
-    });
   }
 
   final AudioPlayer _player = AudioPlayer();
@@ -68,6 +57,14 @@ class FlowLyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
   }
 
   void _broadcastState(PlaybackEvent event) {
+    const processingStates = {
+      ProcessingState.idle: AudioProcessingState.idle,
+      ProcessingState.loading: AudioProcessingState.loading,
+      ProcessingState.buffering: AudioProcessingState.buffering,
+      ProcessingState.ready: AudioProcessingState.ready,
+      ProcessingState.completed: AudioProcessingState.completed,
+    };
+
     playbackState.add(
       playbackState.value.copyWith(
         controls: [
@@ -82,13 +79,7 @@ class FlowLyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
           MediaAction.seekBackward,
         },
         androidCompactActionIndices: const [0, 1, 2],
-        processingState: const {
-          ProcessingState.idle: AudioProcessingState.idle,
-          ProcessingState.loading: AudioProcessingState.loading,
-          ProcessingState.buffering: AudioProcessingState.buffering,
-          ProcessingState.ready: AudioProcessingState.ready,
-          ProcessingState.completed: AudioProcessingState.completed,
-        }[_player.processingState]!,
+        processingState: processingStates[_player.processingState]!,
         playing: _player.playing,
         updatePosition: _player.position,
         bufferedPosition: _player.bufferedPosition,
@@ -100,12 +91,6 @@ class FlowLyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
   @override
   Future<void> onTaskRemoved() async {
     // Keep the media session alive when the app is dismissed from recents.
-  }
-
-  @override
-  Future<void> close() async {
-    await _player.dispose();
-    await super.close();
   }
 }
 
@@ -134,7 +119,6 @@ class FlowLyAudioService {
         androidNotificationChannelName: 'FlowLy playback',
         androidNotificationOngoing: true,
         androidStopForegroundOnPause: false,
-        notificationColor: null,
         preloadArtwork: true,
       ),
     );
