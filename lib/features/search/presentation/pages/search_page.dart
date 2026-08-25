@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/models/track_model.dart';
-import '../../player/infrastructure/audio_player_service.dart';
+import '../../../player/infrastructure/audio_player_service.dart';
 import '../domain/search_repository.dart';
 import '../presentation/bloc/search_controller.dart';
 import '../presentation/widgets/search_result_tile.dart';
@@ -16,7 +16,7 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
-  late final SearchController _controller;
+  late final FlowLySearchController _controller;
   final _textController = TextEditingController();
   final _focusNode = FocusNode();
 
@@ -32,7 +32,7 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void initState() {
     super.initState();
-    _controller = SearchController(widget.searchRepository);
+    _controller = FlowLySearchController(widget.searchRepository);
     _focusNode.requestFocus();
     _controller.addListener(_onChanged);
   }
