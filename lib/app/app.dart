@@ -68,10 +68,12 @@ class _MainScreenState extends State<MainScreen> {
       );
 
       if (mounted) setState(() => _showPlayer = true);
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Не удалось загрузить трек: $error')),
+        const SnackBar(
+          content: Text('Не удалось загрузить тестовый трек. Проверьте, что FlowLy API доступен.'),
+        ),
       );
     } finally {
       if (mounted) setState(() => _loadingTrack = false);
@@ -201,8 +203,8 @@ class HomeTab extends StatelessWidget {
           GestureDetector(
             onTap: loading ? null : onTrackTap,
             child: SizedBox(
-              width: 120,
-              height: 120,
+              width: 132,
+              height: 132,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(20),
                 child: Stack(
@@ -211,42 +213,70 @@ class HomeTab extends StatelessWidget {
                     Image.network(
                       'https://picsum.photos/seed/flowly-test-track/600/600',
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          const ColoredBox(color: Color(0xFFD4D4D4)),
+                      errorBuilder: (_, __, ___) => const ColoredBox(
+                        color: Color(0xFFD4D4D4),
+                      ),
                     ),
                     const DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Color(0x99000000),
-                          ],
+                          colors: [Colors.transparent, Color(0x99000000)],
                         ),
                       ),
                     ),
-                    Positioned(
-                      left: 12,
-                      right: 12,
-                      bottom: 12,
-                      child: loading
-                          ? const SizedBox(
-                              height: 18,
-                              width: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text(
-                              'Play from backend',
+                    if (loading)
+                      const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                      )
+                    else
+                      const Positioned(
+                        left: 12,
+                        right: 12,
+                        bottom: 12,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Test Track',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
                                 color: Colors.white,
                               ),
                             ),
-                    ),
+                            SizedBox(height: 3),
+                            Text(
+                              'Play from backend',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (!loading)
+                      const Align(
+                        alignment: Alignment.center,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.all(8),
+                            child: Icon(
+                              Icons.play_arrow_rounded,
+                              color: Colors.black,
+                              size: 28,
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
