@@ -18,11 +18,17 @@ async function start() {
       }
     }
 
-    const provider = new YouTubeProvider({ apiKey: env.youtubeApiKey });
+    const provider = new YouTubeProvider({
+      apiKey: env.youtubeApiKey,
+      ytDlpPath: env.ytDlpPath,
+      preferYtDlp: env.preferYtDlp,
+    });
+
     const songService = new SongService({
       provider,
       songModel: env.mongoUri ? Song : null,
     });
+
     const app = createApp({
       corsOrigin: env.corsOrigin,
       songService,
@@ -31,6 +37,7 @@ async function start() {
 
     app.listen(env.port, () => {
       console.log(`FlowLy API listening on http://localhost:${env.port}`);
+      console.log(`Audio provider: ${env.preferYtDlp ? `yt-dlp (${env.ytDlpPath}) with youtubei.js fallback` : 'youtubei.js'}`);
     });
   } catch (error) {
     console.error(error);
