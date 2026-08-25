@@ -18,11 +18,11 @@ class DraggableViewState extends State<DraggableView> with SingleTickerProviderS
   static const double _expandedFactor = 1.0;
   static const double _miniLiftFactor = 0.008;
   static const double _radiusFactor = 0.022;
-  static const Duration _trackDuration = Duration(minutes: 3, seconds: 42);
+  static const Duration _trackDuration = Duration(minutes: 3, seconds: 5);
 
   late final AnimationController _progress;
   late final String _artworkUrl;
-  Duration _position = const Duration(minutes: 1, seconds: 8);
+  Duration _position = const Duration(seconds: 39);
   bool _isPlaying = true;
   bool _isLiked = false;
   bool _isDownloaded = false;
@@ -109,9 +109,6 @@ class DraggableViewState extends State<DraggableView> with SingleTickerProviderS
             final bottomGap = widget.mainBarHeight * (1 - t);
             final miniLift = bodyHeight * _miniLiftFactor * (1 - t);
             final radius = width * _radiusFactor * (1 - t);
-            final artSize = lerpDouble(width * 0.12, width * 0.56, t);
-            final artTop = lerpDouble(playerHeight * 0.16, bodyHeight * 0.095, t);
-            final artLeft = lerpDouble(width * 0.025, (width - artSize) / 2, t);
             final miniOpacity = 1 - _remap(t, 0, 0.32);
             final expandedOpacity = _remap(t, 0.45, 1);
 
@@ -135,18 +132,8 @@ class DraggableViewState extends State<DraggableView> with SingleTickerProviderS
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        _BlurredArtworkBackground(imageUrl: _artworkUrl, blurSigma: lerpDouble(18, 34, t), opacity: lerpDouble(0.30, 0.62, t)),
-                        Container(color: Colors.black.withOpacity(0.42)),
-                        Positioned(
-                          top: artTop,
-                          left: artLeft,
-                          width: artSize,
-                          height: artSize,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(width * 0.024),
-                            child: Image.network(_artworkUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const _FallbackArtwork()),
-                          ),
-                        ),
+                        _BlurredArtworkBackground(imageUrl: _artworkUrl, blurSigma: 28, opacity: 0.72),
+                        Container(color: Colors.black.withOpacity(0.58)),
                         Positioned.fill(
                           child: IgnorePointer(
                             ignoring: t > 0.35,
@@ -164,53 +151,28 @@ class DraggableViewState extends State<DraggableView> with SingleTickerProviderS
                             ),
                           ),
                         ),
-                        Positioned(
-                          top: artTop + artSize + bodyHeight * 0.035,
-                          left: width * 0.06,
-                          right: width * 0.06,
+                        Positioned.fill(
                           child: IgnorePointer(
                             ignoring: t < 0.5,
                             child: Opacity(
                               opacity: expandedOpacity,
-                              child: Column(
-                                children: [
-                                  GlobalAudioPlayer(
-                                    title: 'Test Track',
-                                    artist: 'FlowLy Artist',
-                                    isPlaying: _isPlaying,
-                                    isLiked: _isLiked,
-                                    isDownloaded: _isDownloaded,
-                                    onDownload: _downloadTrack,
-                                    onPrevious: _previousTrack,
-                                    onPlayPause: _togglePlayPause,
-                                    onNext: _nextTrack,
-                                    onLike: _toggleLike,
-                                  ),
-                                  SizedBox(height: width * 0.035),
-                                  SliderTheme(
-                                    data: SliderTheme.of(context).copyWith(
-                                      activeTrackColor: Colors.white,
-                                      inactiveTrackColor: Colors.white24,
-                                      thumbColor: Colors.white,
-                                      overlayColor: Colors.transparent,
-                                      trackHeight: width * 0.01,
-                                    ),
-                                    child: Slider(
-                                      value: _trackDuration.inMilliseconds == 0 ? 0 : (_position.inMilliseconds / _trackDuration.inMilliseconds).clamp(0.0, 1.0),
-                                      onChanged: _seek,
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: width * 0.012),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(_format(_position), style: TextStyle(color: Colors.white70, fontSize: width * 0.032)),
-                                        Text(_format(_trackDuration), style: TextStyle(color: Colors.white70, fontSize: width * 0.032)),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                              child: Padding(
+                                padding: EdgeInsets.fromLTRB(width * 0.055, bodyHeight * 0.07, width * 0.055, bodyHeight * 0.08),
+                                child: GlobalAudioPlayer(
+                                  title: 'Love Potions x Exitin (Slowed & Reverb)',
+                                  artist: '13Aurora и nimphia',
+                                  isPlaying: _isPlaying,
+                                  isLiked: _isLiked,
+                                  isDownloaded: _isDownloaded,
+                                  onDownload: _downloadTrack,
+                                  onPrevious: _previousTrack,
+                                  onPlayPause: _togglePlayPause,
+                                  onNext: _nextTrack,
+                                  onLike: _toggleLike,
+                                  position: _position,
+                                  duration: _trackDuration,
+                                  onSeek: _seek,
+                                ),
                               ),
                             ),
                           ),
@@ -278,9 +240,9 @@ class _MiniContent extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Test Track', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                    Text('Love Potions x Exitin (Slowed & Reverb)', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
                     SizedBox(height: 2),
-                    Text('FlowLy Artist', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    Text('13Aurora и nimphia', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white70, fontSize: 12)),
                   ],
                 ),
               ),
