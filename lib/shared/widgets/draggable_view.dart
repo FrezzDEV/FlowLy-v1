@@ -1,22 +1,26 @@
 import 'dart:async';
 import 'dart:ui' show ImageFilter;
 
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 
 import '../../audio/flowly_audio_handler.dart';
+import '../../services/flowly_api.dart';
 import 'global_audio_player.dart';
 
 class DraggableView extends StatefulWidget {
   const DraggableView({
     super.key,
+    required this.mainBarHeight,
+    this.track,
     this.onOpenStateChanged,
     this.onProgressChanged,
-    required this.mainBarHeight,
   });
 
+  final double mainBarHeight;
+  final FlowLyTrack? track;
   final ValueChanged<bool>? onOpenStateChanged;
   final ValueChanged<double>? onProgressChanged;
-  final double mainBarHeight;
 
   @override
   State<DraggableView> createState() => DraggableViewState();
@@ -24,25 +28,24 @@ class DraggableView extends StatefulWidget {
 
 class DraggableViewState extends State<DraggableView>
     with SingleTickerProviderStateMixin {
-  static const double _miniFactor = 0.075;
-  static const double _expandedFactor = 1.0;
-  static const double _miniLiftFactor = 0.008;
-  static const double _radiusFactor = 0.022;
-  static const Duration _trackDuration = Duration(minutes: 3, seconds: 42);
+  static const _miniFactor = 0.075;
+  static const _expandedFactor = 1.0;
+  static const _miniLiftFactor = 0.008;
+  static const _radiusFactor = 0.022;
 
   late final AnimationController _progress;
-  late final String _artworkUrl;
   late final AudioHandler _audioHandler;
-
   StreamSubscription<PlaybackState>? _playbackSubscription;
   StreamSubscription<MediaItem?>? _mediaSubscription;
 
-  Duration _position = const Duration(minutes: 1, seconds: 8);
+  Duration _position = Duration.zero;
+  Duration _trackDuration = const Duration(minutes: 3, seconds: 42);
   bool _isPlaying = false;
   bool _isLiked = false;
   bool _isDownloaded = false;
   String _title = 'Test Track';
   String _artist = 'FlowLy Artist';
+  String? _artworkUrl;
 
   @override
   void initState() {
@@ -50,8 +53,6 @@ class DraggableViewState extends State<DraggableView>
     _audioHandler = FlowLyAudioService.instance.handler;
     _progress = AnimationController(vsync: this, value: 0)
       ..addListener(_notifyProgress);
-    final seed = DateTime.now().microsecondsSinceEpoch;
-    _artworkUrl = 'https://picsum.photos/seed/flowly-$seed/1000/1000';
 
     _playbackSubscription = _audioHandler.playbackStateStream.listen((state) {
       if (!mounted) return;
@@ -65,18 +66,10 @@ class DraggableViewState extends State<DraggableView>
       setState(() {
         _title = item.title;
         _artist = item.artist ?? 'FlowLy Artist';
+        _trackDuration = item.duration ?? _trackDuration;
+        _artworkUrl = item.artUri?.toString();
       });
     });
-
-    final state = _audioHandler.playbackState.value;
-    _isPlaying = state.playing;
-    _position = state.position;
-    final item = _audioHandler.mediaItem.value;
-    if (item != null) {
-      _title = item.title;
-      _artist = item.artist ?? 'FlowLy Artist';
-    }
-    widget.onProgressChanged?.call(0);
   }
 
   @override
@@ -91,7 +84,6 @@ class DraggableViewState extends State<DraggableView>
   void _notifyProgress() => widget.onProgressChanged?.call(_progress.value);
 
   Future<void> open() async {
-    if (!mounted) return;
     widget.onOpenStateChanged?.call(true);
     await _progress.animateTo(
       1,
@@ -101,7 +93,6 @@ class DraggableViewState extends State<DraggableView>
   }
 
   Future<void> close() async {
-    if (!mounted) return;
     await _progress.animateTo(
       0,
       duration: const Duration(milliseconds: 320),
@@ -132,23 +123,16 @@ class DraggableViewState extends State<DraggableView>
   }
 
   void _seek(double value) {
-    final position = Duration(
-      milliseconds: (_trackDuration.inMilliseconds * value).round(),
+    _audioHandler.seek(
+      Duration(
+        milliseconds: (_trackDuration.inMilliseconds * value).round(),
+      ),
     );
-    _audioHandler.seek(position);
   }
 
   void _togglePlayPause() {
-    if (_isPlaying) {
-      _audioHandler.pause();
-    } else {
-      _audioHandler.play();
-    }
+    _isPlaying ? _audioHandler.pause() : _audioHandler.play();
   }
-
-  void _previousTrack() => _audioHandler.skipToPrevious();
-
-  void _nextTrack() => _audioHandler.skipToNext();
 
   void _toggleLike() => setState(() => _isLiked = !_isLiked);
 
@@ -167,201 +151,191 @@ class DraggableViewState extends State<DraggableView>
   }
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final bodyHeight = constraints.maxHeight;
-        final width = constraints.maxWidth;
-        return AnimatedBuilder(
-          animation: _progress,
-          builder: (context, _) {
-            final t = _progress.value;
-            final playerHeight = bodyHeight *
-                lerpDouble(_miniFactor, _expandedFactor, t);
-            final bottomGap = widget.mainBarHeight * (1 - t);
-            final miniLift = bodyHeight * _miniLiftFactor * (1 - t);
-            final radius = width * _radiusFactor * (1 - t);
-            final artSize = lerpDouble(width * 0.12, width * 0.56, t);
-            final artTop = lerpDouble(
-              playerHeight * 0.16,
-              bodyHeight * 0.095,
-              t,
-            );
-            final artLeft = lerpDouble(
-              width * 0.025,
-              (width - artSize) / 2,
-              t,
-            );
-            final miniOpacity = 1 - _remap(t, 0, 0.32);
-            final expandedOpacity = _remap(t, 0.45, 1);
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) {
+          final bodyHeight = constraints.maxHeight;
+          final width = constraints.maxWidth;
+          return AnimatedBuilder(
+            animation: _progress,
+            builder: (context, _) {
+              final t = _progress.value;
+              final playerHeight = bodyHeight *
+                  lerp(_miniFactor, _expandedFactor, t);
+              final bottomGap = widget.mainBarHeight * (1 - t);
+              final miniLift = bodyHeight * _miniLiftFactor * (1 - t);
+              final radius = width * _radiusFactor * (1 - t);
+              final artSize = lerp(width * 0.12, width * 0.56, t);
+              final artTop = lerp(playerHeight * 0.16, bodyHeight * 0.095, t);
+              final artLeft = lerp(width * 0.025, (width - artSize) / 2, t);
+              final miniOpacity = 1 - remap(t, 0, 0.32);
+              final expandedOpacity = remap(t, 0.45, 1);
 
-            return Align(
-              alignment: Alignment.bottomCenter,
-              child: Transform.translate(
-                offset: Offset(0, -(bottomGap + miniLift)),
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onVerticalDragUpdate: _onDragUpdate,
-                  onVerticalDragEnd: _onDragEnd,
-                  child: Container(
-                    width: width,
-                    height: playerHeight,
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF111111),
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(radius),
-                        topRight: Radius.circular(radius),
+              return Align(
+                alignment: Alignment.bottomCenter,
+                child: Transform.translate(
+                  offset: Offset(0, -(bottomGap + miniLift)),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onVerticalDragUpdate: _onDragUpdate,
+                    onVerticalDragEnd: _onDragEnd,
+                    child: Container(
+                      width: width,
+                      height: playerHeight,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF111111),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(radius),
+                          topRight: Radius.circular(radius),
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x22000000),
+                            blurRadius: 18,
+                            offset: Offset(0, -4),
+                          ),
+                        ],
                       ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x22000000),
-                          blurRadius: 18,
-                          offset: Offset(0, -4),
-                        ),
-                      ],
-                    ),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        _BlurredArtworkBackground(
-                          imageUrl: _artworkUrl,
-                          blurSigma: lerpDouble(18, 34, t),
-                          opacity: lerpDouble(0.30, 0.62, t),
-                        ),
-                        Container(color: Colors.black.withOpacity(0.42)),
-                        Positioned(
-                          top: artTop,
-                          left: artLeft,
-                          width: artSize,
-                          height: artSize,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(width * 0.024),
-                            child: Image.network(
-                              _artworkUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  const _FallbackArtwork(),
-                            ),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          _ArtworkBackground(
+                            imageUrl: _artworkUrl,
+                            opacity: lerp(0.30, 0.62, t),
+                            blurSigma: lerp(18, 34, t),
                           ),
-                        ),
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            ignoring: t > 0.35,
-                            child: Opacity(
-                              opacity: miniOpacity,
-                              child: _MiniContent(
-                                onTap: open,
-                                onPrevious: _previousTrack,
-                                onPlayPause: _togglePlayPause,
-                                onNext: _nextTrack,
-                                isPlaying: _isPlaying,
-                                width: width,
-                                artSize: width * 0.12,
-                                title: _title,
-                                artist: _artist,
+                          Container(color: Colors.black.withOpacity(0.42)),
+                          Positioned(
+                            top: artTop,
+                            left: artLeft,
+                            width: artSize,
+                            height: artSize,
+                            child: ClipRRect(
+                              borderRadius:
+                                  BorderRadius.circular(width * 0.024),
+                              child: Image.network(
+                                _artworkUrl ??
+                                    'https://picsum.photos/seed/flowly-test-track/1000/1000',
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    const _FallbackArtwork(),
                               ),
                             ),
                           ),
-                        ),
-                        Positioned(
-                          top: artTop + artSize + bodyHeight * 0.035,
-                          left: width * 0.06,
-                          right: width * 0.06,
-                          child: IgnorePointer(
-                            ignoring: t < 0.5,
-                            child: Opacity(
-                              opacity: expandedOpacity,
-                              child: Column(
-                                children: [
-                                  GlobalAudioPlayer(
-                                    title: _title,
-                                    artist: _artist,
-                                    isPlaying: _isPlaying,
-                                    isLiked: _isLiked,
-                                    isDownloaded: _isDownloaded,
-                                    onDownload: _downloadTrack,
-                                    onPrevious: _previousTrack,
-                                    onPlayPause: _togglePlayPause,
-                                    onNext: _nextTrack,
-                                    onLike: _toggleLike,
-                                  ),
-                                  SizedBox(height: width * 0.035),
-                                  SliderTheme(
-                                    data: SliderTheme.of(context).copyWith(
-                                      activeTrackColor: Colors.white,
-                                      inactiveTrackColor: Colors.white24,
-                                      thumbColor: Colors.white,
-                                      overlayColor: Colors.transparent,
-                                      trackHeight: width * 0.01,
-                                    ),
-                                    child: Slider(
-                                      value: _trackDuration.inMilliseconds == 0
-                                          ? 0
-                                          : (_position.inMilliseconds /
-                                                  _trackDuration.inMilliseconds)
-                                              .clamp(0.0, 1.0),
-                                      onChanged: _seek,
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: width * 0.012,
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          _format(_position),
-                                          style: TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: width * 0.032,
-                                          ),
-                                        ),
-                                        Text(
-                                          _format(_trackDuration),
-                                          style: TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: width * 0.032,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              ignoring: t > 0.35,
+                              child: Opacity(
+                                opacity: miniOpacity,
+                                child: _MiniContent(
+                                  onTap: open,
+                                  onPlayPause: _togglePlayPause,
+                                  isPlaying: _isPlaying,
+                                  width: width,
+                                  artSize: width * 0.12,
+                                  title: _title,
+                                  artist: _artist,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                          Positioned(
+                            top: artTop + artSize + bodyHeight * 0.035,
+                            left: width * 0.06,
+                            right: width * 0.06,
+                            child: IgnorePointer(
+                              ignoring: t < 0.5,
+                              child: Opacity(
+                                opacity: expandedOpacity,
+                                child: Column(
+                                  children: [
+                                    GlobalAudioPlayer(
+                                      title: _title,
+                                      artist: _artist,
+                                      isPlaying: _isPlaying,
+                                      isLiked: _isLiked,
+                                      isDownloaded: _isDownloaded,
+                                      onDownload: _downloadTrack,
+                                      onPrevious: _audioHandler.skipToPrevious,
+                                      onPlayPause: _togglePlayPause,
+                                      onNext: _audioHandler.skipToNext,
+                                      onLike: _toggleLike,
+                                    ),
+                                    SizedBox(height: width * 0.035),
+                                    SliderTheme(
+                                      data: SliderTheme.of(context).copyWith(
+                                        activeTrackColor: Colors.white,
+                                        inactiveTrackColor: Colors.white24,
+                                        thumbColor: Colors.white,
+                                        overlayColor: Colors.transparent,
+                                        trackHeight: width * 0.01,
+                                      ),
+                                      child: Slider(
+                                        value: _trackDuration.inMilliseconds == 0
+                                            ? 0
+                                            : (_position.inMilliseconds /
+                                                    _trackDuration.inMilliseconds)
+                                                .clamp(0.0, 1.0),
+                                        onChanged: _seek,
+                                      ),
+                                    ),
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: width * 0.012,
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            _format(_position),
+                                            style: TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: width * 0.032,
+                                            ),
+                                          ),
+                                          Text(
+                                            _format(_trackDuration),
+                                            style: TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: width * 0.032,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
+              );
+            },
+          );
+        },
+      );
 
-  double lerpDouble(double a, double b, double t) => a + (b - a) * t;
+  double lerp(double a, double b, double t) => a + (b - a) * t;
 
-  double _remap(double value, double start, double end) =>
+  double remap(double value, double start, double end) =>
       ((value - start) / (end - start)).clamp(0.0, 1.0).toDouble();
 }
 
-class _BlurredArtworkBackground extends StatelessWidget {
-  const _BlurredArtworkBackground({
+class _ArtworkBackground extends StatelessWidget {
+  const _ArtworkBackground({
     required this.imageUrl,
-    required this.blurSigma,
     required this.opacity,
+    required this.blurSigma,
   });
 
-  final String imageUrl;
-  final double blurSigma;
+  final String? imageUrl;
   final double opacity;
+  final double blurSigma;
 
   @override
   Widget build(BuildContext context) => Opacity(
@@ -372,7 +346,8 @@ class _BlurredArtworkBackground extends StatelessWidget {
             sigmaY: blurSigma,
           ),
           child: Image.network(
-            imageUrl,
+            imageUrl ??
+                'https://picsum.photos/seed/flowly-test-track-background/1000/1000',
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => const _FallbackArtwork(),
           ),
@@ -398,9 +373,7 @@ class _FallbackArtwork extends StatelessWidget {
 class _MiniContent extends StatelessWidget {
   const _MiniContent({
     required this.onTap,
-    required this.onPrevious,
     required this.onPlayPause,
-    required this.onNext,
     required this.isPlaying,
     required this.width,
     required this.artSize,
@@ -409,9 +382,7 @@ class _MiniContent extends StatelessWidget {
   });
 
   final VoidCallback onTap;
-  final VoidCallback onPrevious;
   final VoidCallback onPlayPause;
-  final VoidCallback onNext;
   final bool isPlaying;
   final double width;
   final double artSize;
@@ -458,24 +429,11 @@ class _MiniContent extends StatelessWidget {
                 ),
               ),
               IconButton(
-                onPressed: onPrevious,
-                tooltip: 'Предыдущий трек',
-                color: Colors.white,
-                icon: const Icon(Icons.skip_previous_rounded),
-              ),
-              IconButton(
                 onPressed: onPlayPause,
-                tooltip: isPlaying ? 'Пауза' : 'Воспроизвести',
                 color: Colors.white,
                 icon: Icon(
                   isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                 ),
-              ),
-              IconButton(
-                onPressed: onNext,
-                tooltip: 'Следующий трек',
-                color: Colors.white,
-                icon: const Icon(Icons.skip_next_rounded),
               ),
             ],
           ),
