@@ -1,8 +1,15 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
 import { Innertube } from 'youtubei.js';
 
+const execFileAsync = promisify(execFile);
+
 export class YouTubeProvider {
-  constructor({ apiKey = '' } = {}) {
+  constructor({ apiKey = '', ytDlpPath = 'yt-dlp', preferYtDlp = true } = {}) {
     this.apiKey = apiKey;
+    this.ytDlpPath = ytDlpPath;
+    this.preferYtDlp = preferYtDlp;
     this.youtubePromise = null;
   }
 
@@ -41,6 +48,53 @@ export class YouTubeProvider {
   }
 
   async getStream(videoId) {
+    if (this.preferYtDlp) {
+      try {
+        return await this.getStreamWithYtDlp(videoId);
+      } catch (error) {
+        console.warn(`yt-dlp stream resolution failed for ${videoId}: ${error.message}`);
+      }
+    }
+
+    return this.getStreamWithInnertube(videoId);
+  }
+
+  async getStreamWithYtDlp(videoId) {
+    const url = `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+    const { stdout } = await execFileAsync(
+      this.ytDlpPath,
+      [
+        '--no-playlist',
+        '--no-warnings',
+        '--quiet',
+        '--skip-download',
+        '-f',
+        'bestaudio/best',
+        '-g',
+        url,
+      ],
+      {
+        timeout: 20_000,
+        maxBuffer: 1024 * 1024,
+      },
+    );
+
+    const streamUrl = stdout
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find(Boolean);
+
+    if (!streamUrl) throw new Error('yt-dlp returned no audio URL');
+
+    return {
+      url: streamUrl,
+      provider: 'yt-dlp',
+      mimeType: null,
+      bitrate: null,
+    };
+  }
+
+  async getStreamWithInnertube(videoId) {
     const yt = await this.client();
     const info = await yt.getBasicInfo(videoId);
     const format = info.chooseFormat({ type: 'audio', quality: 'best' });
@@ -53,6 +107,7 @@ export class YouTubeProvider {
 
     return {
       url: String(url),
+      provider: 'youtubei.js',
       mimeType: format.mime_type,
       bitrate: format.bitrate,
     };
