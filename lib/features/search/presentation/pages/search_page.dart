@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../data/models/track_model.dart';
+import '../../../../data/models/track_model.dart';
 import '../../../player/infrastructure/audio_player_service.dart';
 import '../../domain/search_repository.dart';
 import '../bloc/search_controller.dart';
@@ -194,7 +194,7 @@ class _SearchPageState extends State<SearchPage> {
             )
           else
             ..._controller.results.map(
-              (track) => SearchResultTile(
+              (FlowLyTrack track) => SearchResultTile(
                 track: track,
                 isPlaying: _playingVideoId == track.videoId,
                 onTap: () => _play(track),
