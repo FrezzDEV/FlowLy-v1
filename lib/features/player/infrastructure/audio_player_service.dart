@@ -122,7 +122,7 @@ class AudioServiceManager {
         androidNotificationChannelId: 'com.flowly.audio',
         androidNotificationChannelName: 'FlowLy playback',
         androidNotificationOngoing: true,
-        androidStopForegroundOnPause: false,
+        androidStopForegroundOnPause: true,
         preloadArtwork: true,
       ),
     );
