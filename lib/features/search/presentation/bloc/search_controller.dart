@@ -5,8 +5,8 @@ import 'package:flutter/foundation.dart';
 import '../../../data/models/track_model.dart';
 import '../domain/search_repository.dart';
 
-final class SearchController extends ChangeNotifier {
-  SearchController(this.repository);
+final class FlowLySearchController extends ChangeNotifier {
+  FlowLySearchController(this.repository);
 
   final SearchRepository repository;
   Timer? _debounce;
