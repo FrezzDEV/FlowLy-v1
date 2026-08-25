@@ -4,6 +4,7 @@ import '../../../../data/models/track_model.dart';
 import '../../../player/infrastructure/audio_player_service.dart';
 import '../../domain/search_repository.dart';
 import '../bloc/search_controller.dart';
+import '../data/recent_search_store.dart';
 import '../widgets/search_result_tile.dart';
 
 class SearchPage extends StatefulWidget {
@@ -22,15 +23,11 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   late final FlowLySearchController _controller;
+  late final RecentSearchStore _recentStore;
   final _textController = TextEditingController();
   final _focusNode = FocusNode();
 
-  final List<String> _recentSearches = <String>[
-    'The Weeknd',
-    'Blinding Lights',
-    'Daft Punk',
-  ];
-
+  List<String> _recentSearches = const <String>[];
   String? _playingVideoId;
   bool _loadingTrack = false;
 
@@ -38,8 +35,16 @@ class _SearchPageState extends State<SearchPage> {
   void initState() {
     super.initState();
     _controller = FlowLySearchController(widget.searchRepository);
+    _recentStore = const RecentSearchStore();
     _focusNode.requestFocus();
     _controller.addListener(_onChanged);
+    _loadRecentSearches();
+  }
+
+  Future<void> _loadRecentSearches() async {
+    final recent = await _recentStore.load();
+    if (!mounted) return;
+    setState(() => _recentSearches = recent);
   }
 
   void _onChanged() => setState(() {});
@@ -52,6 +57,18 @@ class _SearchPageState extends State<SearchPage> {
     _textController.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _selectRecent(String query) async {
+    _textController.text = query;
+    _textController.selection = TextSelection.collapsed(offset: query.length);
+    await _controller.search(query);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _removeRecent(String query) async {
+    await _recentStore.remove(query);
+    await _loadRecentSearches();
   }
 
   Future<void> _play(FlowLyTrack track) async {
@@ -76,9 +93,8 @@ class _SearchPageState extends State<SearchPage> {
 
       final query = _textController.text.trim();
       if (query.isNotEmpty) {
-        _recentSearches.remove(query);
-        _recentSearches.insert(0, query);
-        if (_recentSearches.length > 6) _recentSearches.removeLast();
+        await _recentStore.add(query);
+        if (mounted) await _loadRecentSearches();
       }
       widget.onPlayerRequested();
     } catch (_) {
@@ -96,6 +112,7 @@ class _SearchPageState extends State<SearchPage> {
   @override
   Widget build(BuildContext context) {
     final hasQuery = _textController.text.trim().isNotEmpty;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 140),
       children: [
@@ -136,25 +153,47 @@ class _SearchPageState extends State<SearchPage> {
         ),
         const SizedBox(height: 28),
         if (!hasQuery) ...[
-          const Text(
-            'Recent',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Recent',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              if (_recentSearches.isNotEmpty)
+                TextButton(
+                  onPressed: () async {
+                    await _recentStore.clear();
+                    if (mounted) setState(() => _recentSearches = const []);
+                  },
+                  style: TextButton.styleFrom(foregroundColor: Colors.black),
+                  child: const Text('Clear'),
+                ),
+            ],
           ),
           const SizedBox(height: 10),
-          ..._recentSearches.map(
-            (query) => ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-              leading: const Icon(Icons.history_rounded),
-              title: Text(query),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () {
-                _textController.text = query;
-                _textController.selection = TextSelection.collapsed(offset: query.length);
-                _controller.search(query);
-                setState(() {});
-              },
+          if (_recentSearches.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 18),
+              child: Text(
+                'Your recent searches will appear here',
+                style: TextStyle(color: Colors.black54),
+              ),
+            )
+          else
+            ..._recentSearches.map(
+              (query) => ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                leading: const Icon(Icons.history_rounded),
+                title: Text(query),
+                trailing: IconButton(
+                  tooltip: 'Remove',
+                  onPressed: () => _removeRecent(query),
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                ),
+                onTap: () => _selectRecent(query),
+              ),
             ),
-          ),
         ] else ...[
           const Text(
             'Search results',
@@ -174,10 +213,14 @@ class _SearchPageState extends State<SearchPage> {
               padding: const EdgeInsets.only(top: 12),
               child: Column(
                 children: [
-                  Text(_controller.error!),
-                  const SizedBox(height: 8),
+                  const Text('Не удалось выполнить поиск'),
+                  const SizedBox(height: 10),
                   FilledButton(
                     onPressed: () => _controller.search(_textController.text.trim()),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                    ),
                     child: const Text('Повторить'),
                   ),
                 ],
