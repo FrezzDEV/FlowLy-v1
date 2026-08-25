@@ -5,6 +5,8 @@ import '../data/repositories/music_repository_impl.dart';
 import '../domain/repositories/music_repository.dart';
 import '../features/player/infrastructure/audio_player_service.dart';
 import '../features/player/presentation/widgets/player_host.dart';
+import '../features/search/data/search_repository_impl.dart';
+import '../features/search/presentation/pages/search_page.dart';
 
 class FlowLyApp extends StatelessWidget {
   const FlowLyApp({super.key, required this.musicRepository});
@@ -80,6 +82,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.sizeOf(context).height;
     final mainBarHeight = screenHeight * _mainBarFactor;
+    final searchRepository = SearchRepositoryImpl(widget.musicRepository);
 
     return Scaffold(
       body: Stack(
@@ -89,7 +92,7 @@ class _MainScreenState extends State<MainScreen> {
               index: _selectedIndex,
               children: [
                 HomeTab(onTrackTap: _openFeaturedTrack, loading: _loadingTrack),
-                const EmptyTab(label: 'Search'),
+                SearchPage(searchRepository: searchRepository),
                 const EmptyTab(label: 'Library'),
                 const EmptyTab(label: 'Profile'),
               ],
@@ -178,9 +181,19 @@ class HomeTab extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
         children: [
-          const Text('FlowLy', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.8)),
+          const Text(
+            'FlowLy',
+            style: TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.8,
+            ),
+          ),
           const SizedBox(height: 28),
-          const Text('Home', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+          const Text(
+            'Home',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: 16),
           GestureDetector(
             onTap: loading ? null : onTrackTap,
@@ -195,14 +208,18 @@ class HomeTab extends StatelessWidget {
                     Image.network(
                       'https://picsum.photos/seed/flowly-test-track/600/600',
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFD4D4D4)),
+                      errorBuilder: (_, __, ___) =>
+                          const ColoredBox(color: Color(0xFFD4D4D4)),
                     ),
                     const DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, Color(0x99000000)],
+                          colors: [
+                            Colors.transparent,
+                            Color(0x99000000),
+                          ],
                         ),
                       ),
                     ),
@@ -220,7 +237,11 @@ class HomeTab extends StatelessWidget {
                               'Play from backend',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
                             ),
                     ),
                   ],
@@ -241,7 +262,14 @@ class EmptyTab extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
         children: [
-          Text(label, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.8)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.8,
+            ),
+          ),
         ],
       );
 }
