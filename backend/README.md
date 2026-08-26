@@ -2,7 +2,7 @@
 
 Node.js + Express API for search, metadata and audio streaming.
 
-## Run
+## Run locally
 
 ```bash
 cd backend
@@ -13,12 +13,21 @@ npm start
 
 The API listens on `http://localhost:4000` by default.
 
+## Run with Docker
+
+```bash
+cd backend
+docker compose up --build
+```
+
+This starts the API, MongoDB, `yt-dlp`, and FFmpeg in a reproducible stack.
+
 ## Endpoints
 
-- `GET /health`
-- `GET /api/search?q=...`
-- `GET /api/songs/:videoId`
-- `GET /api/stream/:videoId`
+- `GET /health` — backend + media-provider health.
+- `GET /api/search?q=...` — search tracks.
+- `GET /api/songs/:videoId` — track metadata.
+- `GET /api/stream/:videoId` — resolve an audio stream and redirect to it.
 
 ## Media provider
 
@@ -27,18 +36,17 @@ FlowLy separates metadata/search from audio delivery.
 - Search uses YouTube Data API when `YOUTUBE_API_KEY` is configured; otherwise it uses `youtubei.js`.
 - Audio streaming prefers `yt-dlp` and falls back to `youtubei.js` when `PREFER_YTDLP=true`.
 - `YTDLP_PATH` controls the executable name/path; default is `yt-dlp`.
+- The provider has an explicit health check so a missing `yt-dlp` binary is visible at `/health`.
 
-The `yt-dlp` approach is modeled after the architecture used by the open-source `0xrama/yt-api` project, which uses InnerTube for metadata/search and yt-dlp for actual audio delivery. The `guilhermehfr/just-audio` project is another useful reference for a later HLS/FFmpeg/S3 production architecture.
+The provider layout follows the architecture seen in open-source YouTube API projects such as `0xrama/yt-api`: metadata/search stays separate from actual media URL resolution. `guilhermehfr/just-audio` is a useful future reference if FlowLy later needs HLS/FFmpeg/S3-style delivery instead of direct URL redirects.
 
-### Installing yt-dlp
+### yt-dlp / YouTube extraction
 
-Install a current `yt-dlp` binary on the backend host and make sure it is available on `PATH`, or set `YTDLP_PATH` to its full path.
-
-Recent yt-dlp releases may require a supported JavaScript runtime plus the yt-dlp EJS challenge-solver components for YouTube extraction. See the upstream yt-dlp EJS setup guide when an extraction error mentions JavaScript challenges.
+Use a current `yt-dlp` build. Recent YouTube extraction flows can require a supported JavaScript runtime plus the `yt-dlp-ejs` challenge-solver components. The Docker image installs `yt-dlp` and FFmpeg; if a deployment reports an EJS/JavaScript challenge error, add the runtime/components recommended by the current upstream `yt-dlp` documentation.
 
 ## MongoDB
 
-`MONGODB_URI` is optional for the first run. When configured, search results and song metadata are cached in MongoDB.
+`MONGODB_URI` is optional for a local first run. When configured, search results and song metadata are cached in MongoDB.
 
 ## Flutter development
 
