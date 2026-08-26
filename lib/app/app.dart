@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/datasources/remote/music_api.dart';
+import '../data/models/track_model.dart';
 import '../data/repositories/music_repository_impl.dart';
 import '../domain/repositories/music_repository.dart';
 import '../features/player/infrastructure/audio_player_service.dart';
@@ -18,11 +19,11 @@ class FlowLyApp extends StatelessWidget {
         title: 'FlowLy',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          brightness: Brightness.light,
-          scaffoldBackgroundColor: Colors.white,
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: Colors.black,
           colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.black,
-            brightness: Brightness.light,
+            seedColor: Colors.white,
+            brightness: Brightness.dark,
           ),
         ),
         home: MainScreen(musicRepository: musicRepository),
@@ -43,18 +44,10 @@ class _MainScreenState extends State<MainScreen> {
 
   int _selectedIndex = 0;
   bool _showPlayer = false;
-  bool _loadingTrack = false;
   double _playerProgress = 0;
 
-  Future<void> _openFeaturedTrack() async {
-    if (_loadingTrack) return;
-    setState(() => _loadingTrack = true);
-
+  Future<void> _playTrack(FlowLyTrack track) async {
     try {
-      final results = await widget.musicRepository.search('Test Track');
-      if (results.isEmpty) throw StateError('No tracks found');
-
-      final track = results.first;
       final handler = AudioServiceManager.instance.handler as AudioPlayerService;
       await handler.loadTrack(
         streamUrl: widget.musicRepository.streamUrl(track.videoId),
@@ -72,11 +65,9 @@ class _MainScreenState extends State<MainScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Не удалось загрузить тестовый трек. Проверьте, что FlowLy API доступен.'),
+          content: Text('Не удалось загрузить трек. Проверьте подключение к FlowLy API.'),
         ),
       );
-    } finally {
-      if (mounted) setState(() => _loadingTrack = false);
     }
   }
 
@@ -93,7 +84,11 @@ class _MainScreenState extends State<MainScreen> {
             child: IndexedStack(
               index: _selectedIndex,
               children: [
-                HomeTab(onTrackTap: _openFeaturedTrack, loading: _loadingTrack),
+                HomeTab(
+                  repository: widget.musicRepository,
+                  onTrackTap: _playTrack,
+                  onSeeAll: () => setState(() => _selectedIndex = 1),
+                ),
                 SearchPage(
                   searchRepository: searchRepository,
                   onPlayerRequested: () => setState(() => _showPlayer = true),
@@ -151,7 +146,7 @@ class _MainBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ColoredBox(
-        color: Colors.white,
+        color: Colors.black,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: List.generate(
@@ -166,7 +161,7 @@ class _MainBar extends StatelessWidget {
                   child: Icon(
                     _icons[index],
                     size: selectedIndex == index ? 24 : 22,
-                    color: Colors.black,
+                    color: Colors.white,
                   ),
                 ),
               ),
@@ -176,118 +171,276 @@ class _MainBar extends StatelessWidget {
       );
 }
 
-class HomeTab extends StatelessWidget {
-  const HomeTab({super.key, required this.onTrackTap, required this.loading});
+class HomeTab extends StatefulWidget {
+  const HomeTab({
+    super.key,
+    required this.repository,
+    required this.onTrackTap,
+    required this.onSeeAll,
+  });
 
-  final VoidCallback onTrackTap;
-  final bool loading;
+  final MusicRepository repository;
+  final ValueChanged<FlowLyTrack> onTrackTap;
+  final VoidCallback onSeeAll;
 
   @override
-  Widget build(BuildContext context) => ListView(
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
-        children: [
-          const Text(
-            'FlowLy',
-            style: TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.8,
+  State<HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<HomeTab> {
+  late Future<List<FlowLyTrack>> _trendingFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _trendingFuture = widget.repository.trending();
+  }
+
+  void _retry() {
+    setState(() => _trendingFuture = widget.repository.trending());
+  }
+
+  @override
+  Widget build(BuildContext context) => RefreshIndicator(
+        color: Colors.white,
+        backgroundColor: Colors.black,
+        onRefresh: () async => _retry(),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
+          children: [
+            const Text(
+              'FlowLy',
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.8,
+              ),
             ),
-          ),
-          const SizedBox(height: 28),
-          const Text(
-            'Home',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: SizedBox(
-              width: 160,
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: GestureDetector(
-                  onTap: loading ? null : onTrackTap,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(22),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Image.network(
-                          'https://picsum.photos/seed/flowly-test-track/600/600',
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const ColoredBox(
-                            color: Color(0xFFD4D4D4),
-                          ),
-                        ),
-                        const DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Colors.transparent, Color(0x99000000)],
-                            ),
-                          ),
-                        ),
-                        if (loading)
-                          const Center(
-                            child: CircularProgressIndicator(strokeWidth: 2.5),
-                          )
-                        else ...[
-                          const Align(
-                            alignment: Alignment.center,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Padding(
-                                padding: EdgeInsets.all(10),
-                                child: Icon(
-                                  Icons.play_arrow_rounded,
-                                  color: Colors.black,
-                                  size: 30,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const Positioned(
-                            left: 14,
-                            right: 14,
-                            bottom: 14,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Test Track',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                SizedBox(height: 3),
-                                Text(
-                                  'Play from backend',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
+            const SizedBox(height: 32),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Трендовые треки для вас',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.4,
                     ),
                   ),
                 ),
-              ),
+                OutlinedButton(
+                  onPressed: widget.onSeeAll,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                    shape: const StadiumBorder(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  ),
+                  child: const Text('Смотреть все'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            FutureBuilder<List<FlowLyTrack>>(
+              future: _trendingFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                  return const _TrendingSkeleton();
+                }
+
+                if (snapshot.hasError) {
+                  return _TrendingError(onRetry: _retry);
+                }
+
+                final tracks = snapshot.data ?? const <FlowLyTrack>[];
+                if (tracks.isEmpty) {
+                  return _TrendingError(
+                    message: 'Пока не удалось загрузить трендовые треки.',
+                    onRetry: _retry,
+                  );
+                }
+
+                return Column(
+                  children: [
+                    for (final track in tracks)
+                      _TrendingTrackTile(
+                        track: track,
+                        onTap: () => widget.onTrackTap(track),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      );
+}
+
+class _TrendingTrackTile extends StatelessWidget {
+  const _TrendingTrackTile({required this.track, required this.onTap});
+
+  final FlowLyTrack track;
+  final VoidCallback onTap;
+
+  String _durationLabel(int? seconds) {
+    if (seconds == null || seconds < 0) return '—';
+    final minutes = seconds ~/ 60;
+    final remaining = seconds % 60;
+    return '$minutes:${remaining.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: SizedBox(
+                    width: 64,
+                    height: 64,
+                    child: track.thumbnail == null
+                        ? const ColoredBox(
+                            color: Color(0xFF181818),
+                            child: Icon(Icons.music_note_rounded, color: Colors.white54),
+                          )
+                        : Image.network(
+                            track.thumbnail!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const ColoredBox(
+                              color: Color(0xFF181818),
+                              child: Icon(Icons.music_note_rounded, color: Colors.white54),
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        track.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        '${track.artist} • ${_durationLabel(track.durationSeconds)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF8F8F8F),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () {},
+                  splashRadius: 22,
+                  color: Colors.white70,
+                  icon: const Icon(Icons.more_vert_rounded),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
+      );
+}
+
+class _TrendingSkeleton extends StatelessWidget {
+  const _TrendingSkeleton();
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: List.generate(
+          5,
+          (_) => Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Color(0xFF151515),
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      SizedBox(
+                        width: 180,
+                        height: 16,
+                        child: ColoredBox(color: Color(0xFF171717)),
+                      ),
+                      SizedBox(height: 10),
+                      SizedBox(
+                        width: 130,
+                        height: 13,
+                        child: ColoredBox(color: Color(0xFF131313)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
+class _TrendingError extends StatelessWidget {
+  const _TrendingError({required this.onRetry, this.message});
+
+  final VoidCallback onRetry;
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFF111111),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              message ?? 'Не удалось загрузить трендовые треки.',
+              style: const TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: onRetry,
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Повторить'),
+            ),
+          ],
+        ),
       );
 }
 
