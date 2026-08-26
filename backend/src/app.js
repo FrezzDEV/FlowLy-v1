@@ -13,8 +13,24 @@ export function createApp({ corsOrigin, songService, provider }) {
 
   app.use('/health', createHealthRouter({ provider }));
   app.use('/api/search', createSearchRouter({ songService }));
+  app.use('/api/trending', createTrendingRouter({ provider }));
   app.use('/api/songs', createSongsRouter({ songService }));
   app.use('/api/stream', createStreamRouter({ provider }));
 
   return app;
+}
+
+function createTrendingRouter({ provider }) {
+  const router = express.Router();
+
+  router.get('/', async (_req, res) => {
+    try {
+      res.json({ results: await provider.trending() });
+    } catch (error) {
+      console.error(error);
+      res.status(502).json({ error: 'trending_failed', message: error.message });
+    }
+  });
+
+  return router;
 }
