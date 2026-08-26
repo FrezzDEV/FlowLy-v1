@@ -43,6 +43,31 @@ class MusicApi {
     }
   }
 
+  Future<List<FlowLyTrack>> trending() async {
+    try {
+      final response = await _client
+          .get(Uri.parse('$baseUrl/trending'))
+          .timeout(const Duration(seconds: 12));
+
+      if (response.statusCode != 200) {
+        throw MusicApiException('Trending failed: ${response.statusCode}');
+      }
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return (body['results'] as List<dynamic>? ?? const [])
+          .map((item) => FlowLyTrack.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } on TimeoutException {
+      throw const MusicApiException(
+        'FlowLy API не ответил вовремя. Проверьте, что backend запущен.',
+      );
+    } on http.ClientException {
+      throw const MusicApiException(
+        'Не удалось подключиться к FlowLy API. Проверьте Android INTERNET permission и адрес API.',
+      );
+    }
+  }
+
   String streamUrl(String videoId) => '$baseUrl/stream/$videoId';
 
   void dispose() => _client.close();
