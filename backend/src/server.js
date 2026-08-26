@@ -40,6 +40,10 @@ class FallbackProvider {
     return this.run('search', query);
   }
 
+  trending() {
+    return this.run('trending');
+  }
+
   getSong(videoId) {
     return this.run('getSong', videoId);
   }
