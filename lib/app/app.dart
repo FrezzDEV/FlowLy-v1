@@ -200,84 +200,89 @@ class HomeTab extends StatelessWidget {
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 16),
-          GestureDetector(
-            onTap: loading ? null : onTrackTap,
+          Align(
+            alignment: Alignment.centerLeft,
             child: SizedBox(
-              width: 132,
-              height: 132,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.network(
-                      'https://picsum.photos/seed/flowly-test-track/600/600',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const ColoredBox(
-                        color: Color(0xFFD4D4D4),
-                      ),
-                    ),
-                    const DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, Color(0x99000000)],
+              width: 160,
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: GestureDetector(
+                  onTap: loading ? null : onTrackTap,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(22),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.network(
+                          'https://picsum.photos/seed/flowly-test-track/600/600',
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const ColoredBox(
+                            color: Color(0xFFD4D4D4),
+                          ),
                         ),
-                      ),
-                    ),
-                    if (loading)
-                      const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
-                      )
-                    else
-                      const Positioned(
-                        left: 12,
-                        right: 12,
-                        bottom: 12,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Test Track',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                              ),
-                            ),
-                            SizedBox(height: 3),
-                            Text(
-                              'Play from backend',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    if (!loading)
-                      const Align(
-                        alignment: Alignment.center,
-                        child: DecoratedBox(
+                        const DecoratedBox(
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Padding(
-                            padding: EdgeInsets.all(8),
-                            child: Icon(
-                              Icons.play_arrow_rounded,
-                              color: Colors.black,
-                              size: 28,
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.transparent, Color(0x99000000)],
                             ),
                           ),
                         ),
-                      ),
-                  ],
+                        if (loading)
+                          const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2.5),
+                          )
+                        else ...[
+                          const Align(
+                            alignment: Alignment.center,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Padding(
+                                padding: EdgeInsets.all(10),
+                                child: Icon(
+                                  Icons.play_arrow_rounded,
+                                  color: Colors.black,
+                                  size: 30,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const Positioned(
+                            left: 14,
+                            right: 14,
+                            bottom: 14,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Test Track',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                SizedBox(height: 3),
+                                Text(
+                                  'Play from backend',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
