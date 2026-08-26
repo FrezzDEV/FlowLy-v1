@@ -11,5 +11,8 @@ class MusicRepositoryImpl implements MusicRepository {
   Future<List<FlowLyTrack>> search(String query) => _api.search(query);
 
   @override
+  Future<List<FlowLyTrack>> trending() => _api.trending();
+
+  @override
   String streamUrl(String videoId) => _api.streamUrl(videoId);
 }
