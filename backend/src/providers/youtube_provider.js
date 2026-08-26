@@ -18,6 +18,30 @@ export class YouTubeProvider {
     return this.youtubePromise;
   }
 
+  async health() {
+    try {
+      const { stdout } = await execFileAsync(
+        this.ytDlpPath,
+        ['--version'],
+        { timeout: 5_000, maxBuffer: 64 * 1024 },
+      );
+
+      return {
+        ok: true,
+        ytDlp: true,
+        ytDlpVersion: stdout.trim(),
+        preferredProvider: this.preferYtDlp ? 'yt-dlp' : 'youtubei.js',
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        ytDlp: false,
+        preferredProvider: this.preferYtDlp ? 'yt-dlp' : 'youtubei.js',
+        error: error.message,
+      };
+    }
+  }
+
   async search(query) {
     if (this.apiKey) return this.searchDataApi(query);
 
