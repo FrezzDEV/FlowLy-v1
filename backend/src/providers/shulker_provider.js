@@ -11,44 +11,53 @@ function parseDuration(value) {
   return undefined;
 }
 
-function firstArtist(item) {
-  if (typeof item.artist === 'string') return item.artist;
-  if (typeof item.author === 'string') return item.author;
-  if (typeof item.artistName === 'string') return item.artistName;
-  if (Array.isArray(item.artists)) {
-    return item.artists.map((artist) => artist?.name).filter(Boolean).join(', ') || 'Unknown artist';
+function normalizeArtist(item) {
+  const artist = item?.artist;
+  if (typeof artist === 'string') return artist;
+  if (artist?.name) return String(artist.name);
+  if (Array.isArray(item?.artists)) {
+    const names = item.artists.map((entry) => entry?.name).filter(Boolean);
+    if (names.length) return names.join(', ');
   }
+  if (typeof item?.author === 'string') return item.author;
+  if (typeof item?.artistName === 'string') return item.artistName;
   return 'Unknown artist';
 }
 
-function firstThumbnail(item) {
-  if (typeof item.thumbnail === 'string') return item.thumbnail;
-  if (typeof item.artwork === 'string') return item.artwork;
-  if (typeof item.artworkUrl === 'string') return item.artworkUrl;
-  if (typeof item.thumbnailUrl === 'string') return item.thumbnailUrl;
-  if (Array.isArray(item.thumbnails)) {
-    const image = item.thumbnails.find((entry) => entry?.url)?.url;
-    if (image) return image;
-  }
-  return undefined;
+function normalizeThumbnail(item) {
+  return item?.artworkUrl
+    ?? item?.thumbnail
+    ?? item?.artwork
+    ?? item?.thumbnailUrl
+    ?? item?.album?.artworkUrl
+    ?? item?.artist?.imageUrl;
 }
 
 function normalizeTrack(item) {
-  const videoId = item?.videoId ?? item?.video_id ?? item?.trackId ?? item?.track_id ?? item?.id;
+  const track = item?.track ?? item?.data ?? item;
+  const videoId = track?.youtubeId
+    ?? track?.videoId
+    ?? track?.video_id
+    ?? track?.trackId
+    ?? track?.track_id
+    ?? track?.id;
+
   if (!videoId) return null;
 
   return {
     videoId: String(videoId),
-    title: item.title ?? item.name ?? 'Unknown track',
-    artist: firstArtist(item),
-    thumbnail: firstThumbnail(item),
-    durationSeconds: item.durationSeconds ?? item.duration_seconds ?? parseDuration(item.duration),
+    title: track.title ?? track.name ?? 'Unknown track',
+    artist: normalizeArtist(track),
+    thumbnail: normalizeThumbnail(track),
+    durationSeconds: track.durationSeconds
+      ?? track.duration_seconds
+      ?? parseDuration(track.duration),
   };
 }
 
 function extractResults(body) {
   if (Array.isArray(body)) return body;
-  return body?.results ?? body?.tracks ?? body?.data ?? body?.items ?? [];
+  return body?.tracks ?? body?.results ?? body?.data ?? body?.items ?? [];
 }
 
 export class ShulkerProvider {
@@ -86,9 +95,10 @@ export class ShulkerProvider {
       const response = await this.request('/health');
       const body = await response.json();
       return {
-        ok: body?.ok !== false,
+        ok: response.ok && (body?.status === 'ok' || body?.ok === true),
         provider: 'shulker',
         baseUrl: this.baseUrl,
+        version: body?.version,
       };
     } catch (error) {
       return {
@@ -101,11 +111,9 @@ export class ShulkerProvider {
   }
 
   async search(query) {
-    const url = new URL(this.apiUrl('/search'));
-    url.searchParams.set('q', query);
-    url.searchParams.set('filter', 'songs');
-
-    const response = await this.request(`/search?${url.searchParams.toString()}`);
+    const response = await this.request(
+      `/search?q=${encodeURIComponent(query)}&filter=tracks`,
+    );
     const body = await response.json();
 
     return extractResults(body)
@@ -117,15 +125,16 @@ export class ShulkerProvider {
   async getSong(videoId) {
     const response = await this.request(`/tracks/${encodeURIComponent(videoId)}`);
     const body = await response.json();
-    const track = normalizeTrack(body?.track ?? body?.data ?? body);
+    const track = normalizeTrack(body);
     if (!track) throw new Error(`Shulker returned no track for ${videoId}`);
     return track;
   }
 
   async getStream(videoId) {
     return {
-      url: `${this.apiUrl(`/stream/${encodeURIComponent(videoId)}/audio`)}`,
+      url: this.apiUrl(`/stream/${encodeURIComponent(videoId)}/audio`),
       provider: 'shulker',
+      proxy: true,
       mimeType: 'audio/*',
       bitrate: null,
     };
