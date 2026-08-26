@@ -42,7 +42,7 @@ Shulker documents these endpoints:
 - `GET /api/stream/{id}/audio`
 - `GET /api/health`
 
-Its search is backed by YouTube Music/`ytmusicapi`, and its stream endpoint serves local cached audio when available or pipes audio from `yt-dlp`. citehttps://github.com/picklem0b/shulker
+Its search is backed by YouTube Music/`ytmusicapi`, and its stream endpoint serves local cached audio when available or pipes audio from `yt-dlp`.
 
 FlowLy normalizes Shulker responses into its stable Flutter-facing track model, so the Flutter app does not depend on Shulker's internal response shape.
 
