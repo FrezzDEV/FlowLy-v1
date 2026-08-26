@@ -122,6 +122,16 @@ export class ShulkerProvider {
       .slice(0, 20);
   }
 
+  async trending() {
+    const response = await this.request('/tracks/trending');
+    const body = await response.json();
+
+    return extractResults(body)
+      .map(normalizeTrack)
+      .filter(Boolean)
+      .slice(0, 10);
+  }
+
   async getSong(videoId) {
     const response = await this.request(`/tracks/${encodeURIComponent(videoId)}`);
     const body = await response.json();
